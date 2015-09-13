@@ -45,21 +45,5 @@ Temporary Items
 data/users.json
 src/API_Keys.java
 *.rar
-Twitter Archive/data/js/tweets/2014_04.js
-Twitter Archive/data/js/tweets/2014_06.js
-Twitter Archive/data/js/tweets/2014_09.js
-Twitter Archive/data/js/tweets/2014_10.js
-Twitter Archive/data/js/tweets/2015_01.js
-Twitter Archive/data/js/tweets/2014_11.js
-Twitter Archive/data/js/tweets/2014_12.js
-Twitter Archive/data/js/tweets/2015_03.js
-Twitter Archive/data/js/tweets/2015_04.js
-Twitter Archive/data/js/tweets/2015_02.js
-Twitter Archive/data/js/tweets/2014_05.js
-Twitter Archive/data/js/tweets/2014_07.js
-Twitter Archive/data/js/tweets/2014_08.js
-Twitter Archive/data/js/tweets/2015_05.js
-Twitter Archive/data/js/tweets/2015_07.js
-Twitter Archive/data/js/tweets/2015_09.js
-Twitter Archive/data/js/tweets/2015_06.js
-Twitter Archive/data/js/tweets/2015_08.js
+Twitter Archive/data/js/tweets/*
+savedHTML/*
