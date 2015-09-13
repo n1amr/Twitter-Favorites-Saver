@@ -40,13 +40,12 @@ public class JSONHelper {
         return jsonObject.get(parameterKey);
     }
 
-    public static ArrayList<JSONObject> jsonArrayToJSONObjectsList(
-            JSONArray jsonArray) {
-        ArrayList<JSONObject> jsonObjects = new ArrayList<>();
+    public static ArrayList<Object> jsonArrayToArrayList(JSONArray jsonArray) {
+        ArrayList<Object> jsonObjects = new ArrayList<>();
 
         for (int i = 0; i < jsonArray.length(); i++)
             try {
-                jsonObjects.add(jsonArray.getJSONObject(i));
+                jsonObjects.add(jsonArray.get(i));
             } catch (JSONException e) {
                 e.printStackTrace();
             }
@@ -54,12 +53,13 @@ public class JSONHelper {
         return jsonObjects;
     }
 
-    public static ArrayList<Object> jsonArrayToArrayList(JSONArray jsonArray) {
-        ArrayList<Object> jsonObjects = new ArrayList<>();
+    public static ArrayList<JSONObject> jsonArrayToJSONObjectsList(
+            JSONArray jsonArray) {
+        ArrayList<JSONObject> jsonObjects = new ArrayList<>();
 
         for (int i = 0; i < jsonArray.length(); i++)
             try {
-                jsonObjects.add(jsonArray.get(i));
+                jsonObjects.add(jsonArray.getJSONObject(i));
             } catch (JSONException e) {
                 e.printStackTrace();
             }
@@ -175,7 +175,7 @@ public class JSONHelper {
 
     public static void saveJSONArray(File file, JSONArray jsonArray)
             throws IOException {
-        writeDataIntoFile(file, (jsonArray.toString()));
+        writeDataIntoFile(file, jsonArray.toString());
     }
 
     public static void saveJSONObject(File file, JSONObject jsonObject)

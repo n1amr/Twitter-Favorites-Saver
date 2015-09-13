@@ -15,14 +15,10 @@ import twitter4j.conf.ConfigurationBuilder;
 
 public class TwitterApp {
 
-    public static final File USERS_LOGIN_DATA_FILE = new File(
-            "data/users.json");
-
     public static Scanner scanner;
 
-    public static void setScanner(Scanner scanner) {
-        TwitterApp.scanner = scanner;
-    }
+    public static final File USERS_LOGIN_DATA_FILE = new File(
+            "data/users.json");
 
     private static AccessToken getAccessToken(JSONObject loginData) {
         try {
@@ -39,16 +35,20 @@ public class TwitterApp {
         return null;
     }
 
-    private static String prompt(String string) {
-        System.out.print(string + ": ");
-        return scanner.nextLine().trim();
-    }
-
     private static JSONArray loadLoggedInUsers() {
         JSONArray jsonArray = JSONHelper.getJSONArray(USERS_LOGIN_DATA_FILE);
         if (jsonArray == null)
             jsonArray = new JSONArray();
         return jsonArray;
+    }
+
+    private static String prompt(String string) {
+        System.out.print(string + ": ");
+        return scanner.nextLine().trim();
+    }
+
+    public static void setScanner(Scanner scanner) {
+        TwitterApp.scanner = scanner;
     }
 
     public static void showLoggedInUsers() {
@@ -115,10 +115,6 @@ public class TwitterApp {
 
     private Twitter twitter;
 
-    public Twitter getTwitter() {
-        return twitter;
-    }
-
     public TwitterApp() throws TwitterException, JSONException {
         this(null);
     }
@@ -166,6 +162,10 @@ public class TwitterApp {
         AccessToken accessToken = twitter
                 .getOAuthAccessToken(prompt("Please enter the PIN"));
         return accessToken;
+    }
+
+    public Twitter getTwitter() {
+        return twitter;
     }
 
     private void storeUserLoginData() {

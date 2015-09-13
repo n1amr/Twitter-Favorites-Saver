@@ -26,20 +26,313 @@ import twitter4j.TwitterObjectFactory;
 import twitter4j.api.FavoritesResources;
 
 public class Console {
-    static Scanner scanner;
-    static TwitterApp twitterApp;
-    static Twitter twitter;
+    static ArrayList<JSONObject> allTweets = null;
+    static HashSet<Long> checkedIds = null;
+    static SimpleDateFormat dateFormat = new SimpleDateFormat(
+            "E MMM dd hh:mm:ss +SSSS YYYY");
 
-    static final File progressFile = new File("progress.json");
+    static Comparator<JSONObject> filesComparator = new Comparator<JSONObject>() {
+        @Override
+        public int compare(JSONObject o1, JSONObject o2) {
+            try {
+                int m1 = o1.getInt("month");
+                int y1 = o1.getInt("year");
+                int m2 = o2.getInt("month");
+                int y2 = o2.getInt("year");
+
+                if (y1 == y2 && m1 == m2)
+                    return 0;
+                if (y1 > y2 || y1 == y2 && m1 > m2)
+                    return -1;
+                if (y1 < y2 || y1 == y2 && m1 < m2)
+                    return 1;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return 0;
+        }
+    };
     static final File homeDir = new File("Twitter Archive/data/js");
+    static final File htmlFolder = new File("savedHTML/");
     static final File indexFile = new File(
             homeDir.getAbsolutePath() + File.separator + "tweet_index.js");
-    static final File htmlFolder = new File("savedHTML/");
+
+    static final File progressFile = new File("progress.json");
+
+    static Scanner scanner;
+
+    static Comparator<JSONObject> tweetsComparator = new Comparator<JSONObject>() {
+        @Override
+        public int compare(JSONObject o1, JSONObject o2) {
+            try {
+                Long id1 = Long.valueOf(o1.getString("id_str"));
+                Long id2 = Long.valueOf(o2.getString("id_str"));
+
+                if (id1 > id2)
+                    return -1;
+                else if (id1 < id2)
+                    return 1;
+                else
+                    return 0;
+
+            } catch (NumberFormatException | JSONException e) {
+                e.printStackTrace();
+            }
+            return 0;
+        }
+
+    };
+
+    static Twitter twitter;
+
+    static TwitterApp twitterApp;
+
+    static boolean checkId(long id) {
+        return checkedIds.add(id);
+    }
+
+    private static void collectFromHTMLFolder(File sourceFolder)
+            throws JSONException, IOException {
+
+        ArrayList<Long> allids = new ArrayList<>();
+        for (File file : sourceFolder.listFiles()) {
+            ArrayList<Long> ids = getIDsfromHTML(file);
+            System.out.println(
+                    "Collected " + ids.size() + " from" + file.getName());
+            allids.addAll(ids);
+        }
+        TreeSet<Long> uids = new TreeSet<>(allids);
+        allids = new ArrayList<>(uids);
+        Collections.reverse(allids);
+
+        saveProgress(0, loadProgress().getInt("page"),
+                loadProgress().getLong("id"), loadProgress().getInt("month"),
+                loadProgress().getInt("year"));
+        writeIDsintoFile(allids, new File("ids.txt"));
+    }
+
+    public static void deleteTweet(long id) throws Exception {
+        JSONObject deletedTweet = fastLoadSavedTweet(id);
+        String id_str = deletedTweet.getString("id_str");
+
+        String createdAt = deletedTweet.getString("created_at");
+        int month = getMonth(createdAt);
+        int year = getYear(createdAt);
+        String year_month = year + "_" + (month < 10 ? "0" + month : month);
+
+        // Add to json array
+        File tweetsFile = getTweetsFile(month, year);
+        String header = "Grailbird.data.tweets_" + year_month + " = ";
+
+        JSONArray tweets = loadTweetsOfMonth(month, year);
+        JSONArray newTweets = new JSONArray();
+
+        for (int i = 0; i < tweets.length(); i++) {
+            JSONObject tweet2 = tweets.getJSONObject(i);
+            String id_str2 = tweet2.getString("id_str");
+            if (!id_str.equals(id_str2))
+                newTweets.put(tweet2);
+        }
+
+        newTweets = sortTweets(newTweets, tweetsComparator);
+
+        JSONHelper.writeDataIntoFile(tweetsFile,
+                header + unicodeEscape(newTweets.toString()));
+
+        // Add to tweet_index.js
+        updateEntryInIndexFile(tweets, month, year);
+    }
+
+    public static JSONObject fastLoadSavedTweet(long tweetID)
+            throws JSONException, IOException {
+        if (allTweets == null)
+            allTweets = loadAllTweet();
+
+        String id = Long.toString(tweetID);
+
+        for (int i = 0; i < allTweets.size(); i++) {
+            JSONObject tweet = allTweets.get(i);
+            String id2 = tweet.getString("id_str");
+            if (id.equals(id2))
+                return tweet;
+        }
+        return null;
+    }
+
+    public static void formatFile(int month, int year) throws Exception {
+        String year_month = year + "_" + (month < 10 ? "0" + month : month);
+
+        // Add to json array
+        File tweetsFile = getTweetsFile(month, year);
+        String header = "Grailbird.data.tweets_" + year_month + " = ";
+        String fileText;
+        if (tweetsFile.exists())
+            fileText = JSONHelper.readDataFromFile(tweetsFile)
+                    .substring(header.length());
+        else {
+            tweetsFile.createNewFile();
+            fileText = "[]";
+        }
+        JSONArray array = new JSONArray(fileText);
+
+        array = sortTweets(array, tweetsComparator);
+
+        fileText = header + unicodeEscape(array.toString());
+        JSONHelper.writeDataIntoFile(tweetsFile, fileText);
+
+        // Add to tweet_index.js
+        updateEntryInIndexFile(array, month, year);
+    }
+
+    private static ArrayList<Long> getIDsfromHTML(File sourceFile)
+            throws FileNotFoundException {
+        ArrayList<Long> ids = new ArrayList<>();
+
+        Scanner scanner = new Scanner(new FileInputStream(sourceFile));
+        while (scanner.hasNextLine()) {
+            String line = scanner.nextLine();
+            if (line.contains("data-tweet-id")) {
+                int p = line.indexOf("data-tweet-id") + 15;
+                int p2 = line.indexOf("\"", p);
+                String num = line.substring(p, p2);
+                Long id = Long.valueOf(num);
+                ids.add(id);
+            }
+        }
+        scanner.close();
+
+        return ids;
+    }
+
+    public static int getMonth(String createdAt) throws Exception {
+        String m = createdAt.substring(4, 7);
+        if (m.equals("Jan"))
+            return 1;
+        else if (m.equals("Feb"))
+            return 2;
+        else if (m.equals("Mar"))
+            return 3;
+        else if (m.equals("Apr"))
+            return 4;
+        else if (m.equals("May"))
+            return 5;
+        else if (m.equals("Jun"))
+            return 6;
+        else if (m.equals("Jul"))
+            return 7;
+        else if (m.equals("Aug"))
+            return 8;
+        else if (m.equals("Sep"))
+            return 9;
+        else if (m.equals("Oct"))
+            return 10;
+        else if (m.equals("Nov"))
+            return 11;
+        else if (m.equals("Dec"))
+            return 12;
+        else
+            throw new Exception("Error: " + m);
+    }
 
     static File getTweetsFile(int month, int year) {
         return new File(homeDir.getAbsolutePath() + File.separator + "tweets"
                 + File.separator + year + "_"
                 + (month < 10 ? "0" + month : month) + ".js");
+    }
+
+    public static int getYear(String createdAt) {
+        return Integer.valueOf(createdAt.substring(26, 30));
+    }
+
+    static void initializeChecked() throws JSONException, IOException {
+        checkedIds = new HashSet<>();
+        File deletedIdsFile = new File("deleted ids.txt");
+        Scanner scanner = new Scanner(deletedIdsFile);
+        while (scanner.hasNextLong())
+            checkId(scanner.nextLong());
+        scanner.close();
+
+        for (JSONObject tweet : loadAllTweet()) {
+            String id_str = tweet.getString("id_str");
+            long id = Long.valueOf(id_str);
+            checkId(id);
+        }
+    }
+
+    static boolean isChecked(long id) {
+        return checkedIds.contains(id);
+    }
+
+    public static ArrayList<JSONObject> loadAllTweet()
+            throws JSONException, IOException {
+        ArrayList<JSONObject> tweets = new ArrayList<>();
+
+        File tweetsFolder = new File(
+                homeDir.getAbsolutePath() + File.separator + "tweets");
+
+        for (File tweetsFile : tweetsFolder.listFiles()) {
+            JSONArray array = new JSONArray(
+                    JSONHelper.readDataFromFile(tweetsFile).substring(32));
+
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject tweet = array.getJSONObject(i);
+                tweets.add(tweet);
+            }
+        }
+        return tweets;
+    }
+
+    private static JSONObject loadProgress() {
+        return JSONHelper.loadJSONObject(progressFile);
+    }
+
+    public static JSONObject loadSavedTweet(long tweetID)
+            throws JSONException, IOException {
+        String id = Long.toString(tweetID);
+
+        File tweetsFolder = new File(
+                homeDir.getAbsolutePath() + File.separator + "tweets");
+
+        for (File tweetsFile : tweetsFolder.listFiles()) {
+            JSONArray array = new JSONArray(
+                    JSONHelper.readDataFromFile(tweetsFile).substring(32));
+
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject tweet = array.getJSONObject(i);
+                String id2 = tweet.getString("id_str");
+                if (id.equals(id2))
+                    return tweet;
+            }
+        }
+        return null;
+    }
+
+    public static JSONArray loadTweetsOfMonth(int month, int year)
+            throws Exception {
+        String year_month = year + "_" + (month < 10 ? "0" + month : month);
+
+        // Add to json array
+        File tweetsFile = getTweetsFile(month, year);
+        String header = "Grailbird.data.tweets_" + year_month + " = ";
+        String fileText;
+        if (tweetsFile.exists())
+            fileText = JSONHelper.readDataFromFile(tweetsFile)
+                    .substring(header.length());
+        else {
+            tweetsFile.createNewFile();
+            fileText = "[]";
+        }
+
+        JSONArray array = new JSONArray(fileText);
+        array = sortTweets(array, tweetsComparator);
+        return array;
+    }
+
+    static void login() throws JSONException, TwitterException {
+        twitterApp = new TwitterApp(
+                JSONHelper.loadJSONArray(TwitterApp.USERS_LOGIN_DATA_FILE)
+                        .getJSONObject(0));
+        twitter = twitterApp.getTwitter();
     }
 
     public static void main(String[] args) throws Exception {
@@ -51,8 +344,6 @@ public class Console {
         login();
 
         initializeChecked();
-        System.out.println(checkedIds.size());
-        System.out.println(loadAllTweet().size());
 
         int response;
         do {
@@ -117,33 +408,40 @@ public class Console {
         writeIDsintoFile(ids, deletedIdsFile);
     }
 
-    private static void collectFromHTMLFolder(File sourceFolder)
-            throws JSONException, IOException {
-
-        ArrayList<Long> allids = new ArrayList<>();
-        for (File file : sourceFolder.listFiles()) {
-            ArrayList<Long> ids = getIDsfromHTML(file);
-            System.out.println(
-                    "Collected " + ids.size() + " from" + file.getName());
-            allids.addAll(ids);
+    static void pause(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (Exception e2) {
+            e2.printStackTrace();
         }
-        TreeSet<Long> uids = new TreeSet<>(allids);
-        allids = new ArrayList<>(uids);
-        Collections.reverse(allids);
-
-        saveProgress(0, loadProgress().getInt("page"),
-                loadProgress().getLong("id"), loadProgress().getInt("month"),
-                loadProgress().getInt("year"));
-        writeIDsintoFile(allids, new File("ids.txt"));
     }
 
-    static void writeIDsintoFile(ArrayList<Long> ids, File file)
+    static void rateLimitWait(TwitterException e) {
+        System.err.println("Rate limit exceeded");
+        int seconds = e.getRateLimitStatus().getSecondsUntilReset();
+        System.out.println("Waiting for " + seconds + " seconds.");
+        Date date = new Date(new Date().getTime() + seconds * 1000 + 3000);
+        System.out.println("Retry on " + date.toString());
+        try {
+            Thread.sleep(1000 * seconds + 3000);
+        } catch (Exception e2) {
+            e2.printStackTrace();
+        }
+    }
+
+    private static ArrayList<Long> readIDsfromFile(File sourceFile)
             throws FileNotFoundException {
-        PrintWriter printWriter = new PrintWriter(new FileOutputStream(file));
-        for (long id : ids)
-            printWriter.println(id);
-        printWriter.flush();
-        printWriter.close();
+        ArrayList<Long> ids = new ArrayList<>();
+
+        Scanner scanner = new Scanner(new FileInputStream(sourceFile));
+        while (scanner.hasNextLine()) {
+            String line = scanner.nextLine();
+            Long id = Long.valueOf(line);
+            ids.add(id);
+        }
+        scanner.close();
+
+        return ids;
     }
 
     private static void saveFavoritesFromSavedHTML()
@@ -222,104 +520,6 @@ public class Console {
             System.out.println("------------------------------------");
             i++; // go on if successful
         }
-    }
-
-    private static void updateOnline() throws JSONException, IOException {
-        ArrayList<JSONObject> list = loadAllTweet();
-        JSONArray allTweets = JSONHelper.jsonObjectsToJSONArray(list);
-
-        FavoritesResources favs = twitter.favorites();
-        int page = 1;
-
-        int n_saved = 0;
-
-        while (true)
-            try {
-                // Load page of favorites
-                Paging paging = new Paging(page, 100);
-                ResponseList<Status> statuses = favs.getFavorites(paging);
-
-                for (int i = 0; i < statuses.size();) {
-                    System.out.println("i=" + i + " page = " + page + ":");
-                    try {
-                        Status status = statuses.get(i);
-                        String json = TwitterObjectFactory.getRawJSON(status);
-                        JSONObject jsonTweet = new JSONObject(json);
-
-                        System.out.println(jsonTweet.getString("text"));
-                        System.out.println(jsonTweet.getString("created_at"));
-
-                        // Stop if 20 consecutive tweets are saved before
-                        if (tweetExists(jsonTweet, allTweets)) {
-                            System.out.println("SKIPPED");
-                            n_saved++;
-                            if (n_saved >= 20)
-                                return;
-                        } else
-                            n_saved = 0; // reset
-                        saveTweet(jsonTweet);
-
-                        System.out.println(
-                                "------------------------------------");
-                        i++;
-                    } catch (Exception e) {
-                        if (e instanceof TwitterException
-                                && ((TwitterException) e).getErrorCode() == 88)
-                            rateLimitWait((TwitterException) e);
-                        else {
-                            e.printStackTrace();
-                            // Retry after 10 seconds
-                            pause(10000);
-                        }
-                    }
-                    pause(2000);
-                }
-                page++;
-            } catch (Exception e) {
-                if (e instanceof TwitterException
-                        && ((TwitterException) e).getErrorCode() == 88)
-                    rateLimitWait((TwitterException) e);
-                else {
-                    e.printStackTrace();
-                    // Retry after 10 seconds
-                    pause(10000);
-                }
-            }
-    }
-
-    private static ArrayList<Long> readIDsfromFile(File sourceFile)
-            throws FileNotFoundException {
-        ArrayList<Long> ids = new ArrayList<>();
-
-        Scanner scanner = new Scanner(new FileInputStream(sourceFile));
-        while (scanner.hasNextLine()) {
-            String line = scanner.nextLine();
-            Long id = Long.valueOf(line);
-            ids.add(id);
-        }
-        scanner.close();
-
-        return ids;
-    }
-
-    private static ArrayList<Long> getIDsfromHTML(File sourceFile)
-            throws FileNotFoundException {
-        ArrayList<Long> ids = new ArrayList<>();
-
-        Scanner scanner = new Scanner(new FileInputStream(sourceFile));
-        while (scanner.hasNextLine()) {
-            String line = scanner.nextLine();
-            if (line.contains("data-tweet-id")) {
-                int p = line.indexOf("data-tweet-id") + 15;
-                int p2 = line.indexOf("\"", p);
-                String num = line.substring(p, p2);
-                Long id = Long.valueOf(num);
-                ids.add(id);
-            }
-        }
-        scanner.close();
-
-        return ids;
     }
 
     private static void saveFavoritesOnline() throws JSONException {
@@ -403,69 +603,6 @@ public class Console {
 
     }
 
-    private static JSONObject loadProgress() {
-        return JSONHelper.loadJSONObject(progressFile);
-    }
-
-    static ArrayList<JSONObject> allTweets = null;
-
-    public static JSONObject fastLoadSavedTweet(long tweetID)
-            throws JSONException, IOException {
-        if (allTweets == null) {
-            allTweets = loadAllTweet();
-        }
-
-        String id = Long.toString(tweetID);
-
-        for (int i = 0; i < allTweets.size(); i++) {
-            JSONObject tweet = allTweets.get(i);
-            String id2 = tweet.getString("id_str");
-            if (id.equals(id2))
-                return tweet;
-        }
-        return null;
-    }
-
-    public static ArrayList<JSONObject> loadAllTweet()
-            throws JSONException, IOException {
-        ArrayList<JSONObject> tweets = new ArrayList<>();
-
-        File tweetsFolder = new File(
-                homeDir.getAbsolutePath() + File.separator + "tweets");
-
-        for (File tweetsFile : tweetsFolder.listFiles()) {
-            JSONArray array = new JSONArray(
-                    JSONHelper.readDataFromFile(tweetsFile).substring(32));
-
-            for (int i = 0; i < array.length(); i++) {
-                JSONObject tweet = array.getJSONObject(i);
-                tweets.add(tweet);
-            }
-        }
-        return tweets;
-    }
-
-    public static JSONObject loadSavedTweet(long tweetID)
-            throws JSONException, IOException {
-        String id = Long.toString(tweetID);
-
-        File tweetsFolder = new File(
-                homeDir.getAbsolutePath() + File.separator + "tweets");
-
-        for (File tweetsFile : tweetsFolder.listFiles()) {
-            JSONArray array = new JSONArray(
-                    JSONHelper.readDataFromFile(tweetsFile).substring(32));
-
-            for (int i = 0; i < array.length(); i++) {
-                JSONObject tweet = array.getJSONObject(i);
-                String id2 = tweet.getString("id_str");
-                if (id.equals(id2))
-                    return tweet;
-            }
-        }
-        return null;
-    }
-
     public static void saveTweet(JSONObject jsonTweet) throws Exception {
         String createdAt = jsonTweet.getString("created_at");
         int month = getMonth(createdAt);
@@ -492,90 +629,48 @@ public class Console {
         updateEntryInIndexFile(array, month, year);
     }
 
-    public static void deleteTweet(long id) throws Exception {
-        JSONObject deletedTweet = fastLoadSavedTweet(id);
-        String id_str = deletedTweet.getString("id_str");
+    public static JSONArray sortTweets(JSONArray tweets,
+            Comparator<JSONObject> comparator) {
+        JSONArray jsonArray = new JSONArray();
 
-        String createdAt = deletedTweet.getString("created_at");
-        int month = getMonth(createdAt);
-        int year = getYear(createdAt);
-        String year_month = year + "_" + (month < 10 ? "0" + month : month);
+        // Copy to array list
+        ArrayList<JSONObject> list = JSONHelper
+                .jsonArrayToJSONObjectsList(tweets);
 
-        // Add to json array
-        File tweetsFile = getTweetsFile(month, year);
-        String header = "Grailbird.data.tweets_" + year_month + " = ";
+        Collections.sort(list, tweetsComparator);
+        // Copy back
+        for (JSONObject obj : list)
+            jsonArray.put(obj);
 
-        JSONArray tweets = loadTweetsOfMonth(month, year);
-        JSONArray newTweets = new JSONArray();
+        return jsonArray;
+    }
 
+    public static boolean tweetExists(JSONObject tweet, JSONArray tweets)
+            throws JSONException {
+        String id = tweet.getString("id_str");
         for (int i = 0; i < tweets.length(); i++) {
             JSONObject tweet2 = tweets.getJSONObject(i);
-            String id_str2 = tweet2.getString("id_str");
-            if (!id_str.equals(id_str2)) {
-                newTweets.put(tweet2);
-            }
+            String id2 = tweet2.getString("id_str");
+            if (id.equals(id2))
+                return true;
         }
-
-        newTweets = sortTweets(newTweets, tweetsComparator);
-
-        JSONHelper.writeDataIntoFile(tweetsFile,
-                header + unicodeEscape(newTweets.toString()));
-
-        // Add to tweet_index.js
-        updateEntryInIndexFile(tweets, month, year);
+        return false;
     }
 
-    static void login() throws JSONException, TwitterException {
-        twitterApp = new TwitterApp(
-                JSONHelper.loadJSONArray(TwitterApp.USERS_LOGIN_DATA_FILE)
-                        .getJSONObject(0));
-        twitter = twitterApp.getTwitter();
-    }
+    public static String unicodeEscape(String s) {
+        StringBuffer buffer = new StringBuffer();
 
-    public static void formatFile(int month, int year) throws Exception {
-        String year_month = year + "_" + (month < 10 ? "0" + month : month);
-
-        // Add to json array
-        File tweetsFile = getTweetsFile(month, year);
-        String header = "Grailbird.data.tweets_" + year_month + " = ";
-        String fileText;
-        if (tweetsFile.exists())
-            fileText = JSONHelper.readDataFromFile(tweetsFile)
-                    .substring(header.length());
-        else {
-            tweetsFile.createNewFile();
-            fileText = "[]";
-        }
-        JSONArray array = new JSONArray(fileText);
-
-        array = sortTweets(array, tweetsComparator);
-
-        fileText = header + unicodeEscape(array.toString());
-        JSONHelper.writeDataIntoFile(tweetsFile, fileText);
-
-        // Add to tweet_index.js
-        updateEntryInIndexFile(array, month, year);
-    }
-
-    public static JSONArray loadTweetsOfMonth(int month, int year)
-            throws Exception {
-        String year_month = year + "_" + (month < 10 ? "0" + month : month);
-
-        // Add to json array
-        File tweetsFile = getTweetsFile(month, year);
-        String header = "Grailbird.data.tweets_" + year_month + " = ";
-        String fileText;
-        if (tweetsFile.exists())
-            fileText = JSONHelper.readDataFromFile(tweetsFile)
-                    .substring(header.length());
-        else {
-            tweetsFile.createNewFile();
-            fileText = "[]";
-        }
-
-        JSONArray array = new JSONArray(fileText);
-        array = sortTweets(array, tweetsComparator);
-        return array;
+        for (char c : s.toCharArray())
+            // TODO check 1024
+            if (c > 0xFF) {
+                int code = c;
+                String num = Integer.toHexString(code).toUpperCase();
+                while (num.length() < 4)
+                    num = '0' + num;
+                buffer.append("\\u" + num);
+            } else
+                buffer.append(c);
+        return buffer.toString();
     }
 
     private static void updateEntryInIndexFile(JSONArray array, int month,
@@ -623,175 +718,76 @@ public class Console {
         }
     }
 
-    static HashSet<Long> checkedIds = null;
+    private static void updateOnline() throws JSONException, IOException {
+        ArrayList<JSONObject> list = loadAllTweet();
+        JSONArray allTweets = JSONHelper.jsonObjectsToJSONArray(list);
 
-    static void initializeChecked() throws JSONException, IOException {
-        checkedIds = new HashSet<>();
-        File deletedIdsFile = new File("deleted ids.txt");
-        Scanner scanner = new Scanner(deletedIdsFile);
-        while (scanner.hasNextLong()) {
-            checkId(scanner.nextLong());
-        }
-        scanner.close();
+        FavoritesResources favs = twitter.favorites();
+        int page = 1;
 
-        for (JSONObject tweet : loadAllTweet()) {
-            String id_str = tweet.getString("id_str");
-            long id = Long.valueOf(id_str);
-            checkId(id);
-        }
-    }
+        int n_saved = 0;
 
-    static boolean checkId(long id) {
-        return checkedIds.add(id);
-    }
-
-    static boolean isChecked(long id) {
-        return checkedIds.contains(id);
-    }
-
-    public static JSONArray sortTweets(JSONArray tweets,
-            Comparator<JSONObject> comparator) {
-        JSONArray jsonArray = new JSONArray();
-
-        // Copy to array list
-        ArrayList<JSONObject> list = JSONHelper
-                .jsonArrayToJSONObjectsList(tweets);
-
-        Collections.sort(list, tweetsComparator);
-        // Copy back
-        for (JSONObject obj : list)
-            jsonArray.put(obj);
-
-        return jsonArray;
-    }
-
-    static void rateLimitWait(TwitterException e) {
-        System.err.println("Rate limit exceeded");
-        int seconds = e.getRateLimitStatus().getSecondsUntilReset();
-        System.out.println("Waiting for " + seconds + " seconds.");
-        Date date = new Date(new Date().getTime() + seconds * 1000 + 3000);
-        System.out.println("Retry on " + date.toString());
-        try {
-            Thread.sleep(1000 * seconds + 3000);
-        } catch (Exception e2) {
-            e2.printStackTrace();
-        }
-    }
-
-    public static String unicodeEscape(String s) {
-        StringBuffer buffer = new StringBuffer();
-
-        for (char c : s.toCharArray())
-            // TODO check 1024
-            if (c > 0xFF) {
-                int code = c;
-                String num = Integer.toHexString(code).toUpperCase();
-                while (num.length() < 4)
-                    num = '0' + num;
-                buffer.append("\\u" + num);
-            } else
-                buffer.append(c);
-        return buffer.toString();
-    }
-
-    public static int getYear(String createdAt) {
-        return Integer.valueOf(createdAt.substring(26, 30));
-    }
-
-    public static int getMonth(String createdAt) throws Exception {
-        String m = createdAt.substring(4, 7);
-        if (m.equals("Jan"))
-            return 1;
-        else if (m.equals("Feb"))
-            return 2;
-        else if (m.equals("Mar"))
-            return 3;
-        else if (m.equals("Apr"))
-            return 4;
-        else if (m.equals("May"))
-            return 5;
-        else if (m.equals("Jun"))
-            return 6;
-        else if (m.equals("Jul"))
-            return 7;
-        else if (m.equals("Aug"))
-            return 8;
-        else if (m.equals("Sep"))
-            return 9;
-        else if (m.equals("Oct"))
-            return 10;
-        else if (m.equals("Nov"))
-            return 11;
-        else if (m.equals("Dec"))
-            return 12;
-        else
-            throw new Exception("Error: " + m);
-    }
-
-    static void pause(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (Exception e2) {
-            e2.printStackTrace();
-        }
-    }
-
-    static Comparator<JSONObject> tweetsComparator = new Comparator<JSONObject>() {
-        @Override
-        public int compare(JSONObject o1, JSONObject o2) {
+        while (true)
             try {
-                Long id1 = Long.valueOf(o1.getString("id_str"));
-                Long id2 = Long.valueOf(o2.getString("id_str"));
+                // Load page of favorites
+                Paging paging = new Paging(page, 100);
+                ResponseList<Status> statuses = favs.getFavorites(paging);
 
-                if (id1 > id2)
-                    return -1;
-                else if (id1 < id2)
-                    return 1;
-                else
-                    return 0;
+                for (int i = 0; i < statuses.size();) {
+                    System.out.println("i=" + i + " page = " + page + ":");
+                    try {
+                        Status status = statuses.get(i);
+                        String json = TwitterObjectFactory.getRawJSON(status);
+                        JSONObject jsonTweet = new JSONObject(json);
 
-            } catch (NumberFormatException | JSONException e) {
-                e.printStackTrace();
-            }
-            return 0;
-        }
+                        System.out.println(jsonTweet.getString("text"));
+                        System.out.println(jsonTweet.getString("created_at"));
 
-    };
-    static Comparator<JSONObject> filesComparator = new Comparator<JSONObject>() {
-        @Override
-        public int compare(JSONObject o1, JSONObject o2) {
-            try {
-                int m1 = o1.getInt("month");
-                int y1 = o1.getInt("year");
-                int m2 = o2.getInt("month");
-                int y2 = o2.getInt("year");
+                        // Stop if 20 consecutive tweets are saved before
+                        if (tweetExists(jsonTweet, allTweets)) {
+                            System.out.println("SKIPPED");
+                            n_saved++;
+                            if (n_saved >= 20)
+                                return;
+                        } else
+                            n_saved = 0; // reset
+                        saveTweet(jsonTweet);
 
-                if (y1 == y2 && m1 == m2)
-                    return 0;
-                if (y1 > y2 || y1 == y2 && m1 > m2)
-                    return -1;
-                if (y1 < y2 || y1 == y2 && m1 < m2)
-                    return 1;
+                        System.out.println(
+                                "------------------------------------");
+                        i++;
+                    } catch (Exception e) {
+                        if (e instanceof TwitterException
+                                && ((TwitterException) e).getErrorCode() == 88)
+                            rateLimitWait((TwitterException) e);
+                        else {
+                            e.printStackTrace();
+                            // Retry after 10 seconds
+                            pause(10000);
+                        }
+                    }
+                    pause(2000);
+                }
+                page++;
             } catch (Exception e) {
-                e.printStackTrace();
+                if (e instanceof TwitterException
+                        && ((TwitterException) e).getErrorCode() == 88)
+                    rateLimitWait((TwitterException) e);
+                else {
+                    e.printStackTrace();
+                    // Retry after 10 seconds
+                    pause(10000);
+                }
             }
-            return 0;
-        }
-    };
-
-    public static boolean tweetExists(JSONObject tweet, JSONArray tweets)
-            throws JSONException {
-        String id = tweet.getString("id_str");
-        for (int i = 0; i < tweets.length(); i++) {
-            JSONObject tweet2 = tweets.getJSONObject(i);
-            String id2 = tweet2.getString("id_str");
-            if (id.equals(id2))
-                return true;
-        }
-        return false;
     }
 
-    static SimpleDateFormat dateFormat = new SimpleDateFormat(
-            "E MMM dd hh:mm:ss +SSSS YYYY");
+    static void writeIDsintoFile(ArrayList<Long> ids, File file)
+            throws FileNotFoundException {
+        PrintWriter printWriter = new PrintWriter(new FileOutputStream(file));
+        for (long id : ids)
+            printWriter.println(id);
+        printWriter.flush();
+        printWriter.close();
+    }
 
 }
