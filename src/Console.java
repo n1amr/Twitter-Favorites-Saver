@@ -351,7 +351,8 @@ public class Console {
             System.out.println(
                     "2- Save favorites offline from html files in \"savedHTML\" folder");
             System.out.println("3- Check if a tweet is saved");
-            System.out.println("4- Delete a saved tweet");
+            System.out.println("4- Add a tweet by ID");
+            System.out.println("5- Remove a saved tweet");
             System.out.println("0- Exit");
 
             response = scanner.nextInt();
@@ -383,6 +384,15 @@ public class Console {
                     break;
                 }
                 case 4: {
+                    System.out.print("Enter id:");
+                    long id = scanner.nextLong();
+                    scanner.nextLine();
+                    System.out.println("Adding ...");
+                    System.out.println(getTweet(id).get("text"));
+                    saveTweet(id);
+                    break;
+                }
+                case 5: {
                     System.out.print("Enter id:");
                     long id = scanner.nextLong();
                     scanner.nextLine();
@@ -469,9 +479,7 @@ public class Console {
                 // Try to get tweet and save it
                 try {
                     if (!isChecked(id)) {
-                        Status status = twitter.showStatus(id);
-                        String json = TwitterObjectFactory.getRawJSON(status);
-                        jsonTweet = new JSONObject(json);
+                        jsonTweet = getTweet(id);
                         System.out.println(jsonTweet.getString("text"));
                         System.out.println(jsonTweet.getString("created_at"));
 
@@ -486,7 +494,7 @@ public class Console {
                                 loadProgress().getInt("page"), id, m, y);
 
                         // Slow down for rate limit
-                        // TODO pause(2000);
+                        // pause(2000);
                     }
                 } catch (Exception e) {
                     TwitterException twitterErr = (TwitterException) e;
@@ -601,6 +609,18 @@ public class Console {
         progress.put("year", year);
         JSONHelper.saveJSONObject(progressFile, progress);
 
+    }
+
+    public static JSONObject getTweet(long id)
+            throws TwitterException, JSONException {
+        Status status = twitter.showStatus(id);
+        String json = TwitterObjectFactory.getRawJSON(status);
+        JSONObject jsonTweet = new JSONObject(json);
+        return jsonTweet;
+    }
+
+    public static void saveTweet(long id) throws Exception {
+        saveTweet(getTweet(id));
     }
 
     public static void saveTweet(JSONObject jsonTweet) throws Exception {
