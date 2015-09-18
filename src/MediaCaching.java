@@ -24,7 +24,7 @@ public class MediaCaching {
         URLConnection urlConnection = null;
 
         try {
-            int ByteRead, ByteWritten = 0;
+            int ByteRead = 0;
             URL url = new URL(address);
 
             outputStream = new BufferedOutputStream(new FileOutputStream(file));
@@ -39,7 +39,6 @@ public class MediaCaching {
             byte[] buf = new byte[1024];
             while ((ByteRead = inputStream.read(buf)) != -1) {
                 outputStream.write(buf, 0, ByteRead);
-                ByteWritten += ByteRead;
             }
         } catch (Exception e) {
             e.printStackTrace();

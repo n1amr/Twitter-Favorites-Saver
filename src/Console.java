@@ -52,7 +52,8 @@ public class Console {
             return 0;
         }
     };
-    static final File homeDir = new File("Twitter Archive");
+    static final File homeDir = new File(
+            "D:\\Google Drive\\Backups\\Internet\\Twitter Favorite Archive");
     static final File dataDir = new File(homeDir, "data/js");
     static final File htmlFolder = new File("savedHTML/");
     static final File mediaFolder = new File(
