@@ -52,10 +52,15 @@ public class Console {
             return 0;
         }
     };
-    static final File homeDir = new File("Twitter Archive/data/js");
+    static final File homeDir = new File("Twitter Archive");
+    static final File dataDir = new File(homeDir, "data/js");
     static final File htmlFolder = new File("savedHTML/");
+    static final File mediaFolder = new File(
+            homeDir.getAbsolutePath() + File.separator + "media");
+    static final File avatarsFolder = new File(
+            homeDir.getAbsolutePath() + File.separator + "profile_images");
     static final File indexFile = new File(
-            homeDir.getAbsolutePath() + File.separator + "tweet_index.js");
+            dataDir.getAbsolutePath() + File.separator + "tweet_index.js");
 
     static final File progressFile = new File("progress.json");
 
@@ -235,7 +240,7 @@ public class Console {
     }
 
     static File getTweetsFile(int month, int year) {
-        return new File(homeDir.getAbsolutePath() + File.separator + "tweets"
+        return new File(dataDir.getAbsolutePath() + File.separator + "tweets"
                 + File.separator + year + "_"
                 + (month < 10 ? "0" + month : month) + ".js");
     }
@@ -248,6 +253,12 @@ public class Console {
         checkedIds = new HashSet<>();
         File deletedIdsFile = new File("deleted ids.txt");
         Scanner scanner = new Scanner(deletedIdsFile);
+        while (scanner.hasNextLong())
+            checkId(scanner.nextLong());
+        scanner.close();
+
+        File deletedForeverIdsFile = new File("deleted forever ids.txt");
+        scanner = new Scanner(deletedForeverIdsFile);
         while (scanner.hasNextLong())
             checkId(scanner.nextLong());
         scanner.close();
@@ -268,9 +279,10 @@ public class Console {
         ArrayList<JSONObject> tweets = new ArrayList<>();
 
         File tweetsFolder = new File(
-                homeDir.getAbsolutePath() + File.separator + "tweets");
+                dataDir.getAbsolutePath() + File.separator + "tweets");
 
         for (File tweetsFile : tweetsFolder.listFiles()) {
+            System.out.println("Loading tweets on " + tweetsFile.getName());
             JSONArray array = new JSONArray(
                     JSONHelper.readDataFromFile(tweetsFile).substring(32));
 
@@ -291,7 +303,7 @@ public class Console {
         String id = Long.toString(tweetID);
 
         File tweetsFolder = new File(
-                homeDir.getAbsolutePath() + File.separator + "tweets");
+                dataDir.getAbsolutePath() + File.separator + "tweets");
 
         for (File tweetsFile : tweetsFolder.listFiles()) {
             JSONArray array = new JSONArray(
@@ -353,6 +365,8 @@ public class Console {
             System.out.println("3- Check if a tweet is saved");
             System.out.println("4- Add a tweet by ID");
             System.out.println("5- Remove a saved tweet");
+            System.out.println("6- Retry failed");
+            System.out.println("7- Save offline images");
             System.out.println("0- Exit");
 
             response = scanner.nextInt();
@@ -401,6 +415,47 @@ public class Console {
                     deleteTweet(id);
                     break;
                 }
+                case 6: {
+                    File deletedIdsFile = new File("deleted ids.txt");
+                    ArrayList<Long> ids = readIDsfromFile(deletedIdsFile);
+
+                    TreeSet<Long> uids = new TreeSet<>(ids);
+                    ids = new ArrayList<>(uids);
+                    Collections.reverse(ids);
+
+                    ArrayList<Long> toRemoveFromFile = new ArrayList<>();
+
+                    for (int i = 0; i < ids.size(); i++) {
+                        Long id = ids.get(i);
+                        System.out.println(i + ": id=" + id);
+                        try {
+                            saveTweet(id);
+
+                            JSONObject tweet = loadSavedTweet(id);
+                            System.out.println("Successfully saved " + id);
+                            System.out.println(tweet.get("text"));
+
+                            toRemoveFromFile.add(id);
+                        } catch (TwitterException e) {
+                            if ((e.getErrorCode() == 179)
+                                    || (e.getErrorCode() == 63)) {
+                                markDeletedForever(id);
+                                toRemoveFromFile.add(id);
+                            } else if (e.getErrorCode() == 88)
+                                rateLimitWait(e);
+                            else
+                                e.printStackTrace();
+                        }
+                    }
+
+                    for (Long id : toRemoveFromFile)
+                        ids.remove(id);
+                    break;
+                }
+                case 7: {
+                    MediaCaching.redirectAllToLocal();
+                    break;
+                }
             }
         } while (response != 0);
         System.out.println("End");
@@ -408,6 +463,18 @@ public class Console {
 
     static void markFailed(long id) throws FileNotFoundException {
         File deletedIdsFile = new File("deleted ids.txt");
+        ArrayList<Long> ids = readIDsfromFile(deletedIdsFile);
+
+        ids.add(id);
+        TreeSet<Long> uids = new TreeSet<>(ids);
+        ids = new ArrayList<>(uids);
+        Collections.reverse(ids);
+
+        writeIDsintoFile(ids, deletedIdsFile);
+    }
+
+    static void markDeletedForever(long id) throws FileNotFoundException {
+        File deletedIdsFile = new File("deleted forever ids.txt");
         ArrayList<Long> ids = readIDsfromFile(deletedIdsFile);
 
         ids.add(id);
