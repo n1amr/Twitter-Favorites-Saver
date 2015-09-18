@@ -1,1 +1,0 @@
-Grailbird.data.tweets_2000_01 = []

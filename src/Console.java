@@ -380,6 +380,7 @@ public class Console {
                         saveFavoritesOnline();
                     else
                         updateOnline();
+                    MediaCaching.redirectAllToLocal();
                     break;
                 }
                 case 2: {
@@ -388,6 +389,7 @@ public class Console {
                     if (res.contains("Y"))
                         collectFromHTMLFolder(htmlFolder);
                     saveFavoritesFromSavedHTML();
+                    MediaCaching.redirectAllToLocal();
                     break;
                 }
                 case 3: {
@@ -404,6 +406,7 @@ public class Console {
                     System.out.println("Adding ...");
                     System.out.println(getTweet(id).get("text"));
                     saveTweet(id);
+                    MediaCaching.redirectAllToLocal();
                     break;
                 }
                 case 5: {
@@ -412,6 +415,7 @@ public class Console {
                     scanner.nextLine();
                     System.out.println("Deleteing ...");
                     System.out.println(fastLoadSavedTweet(id).get("text"));
+                    // TODO MediaCaching.deleteMediaForTweet(id);
                     deleteTweet(id);
                     break;
                 }
@@ -450,6 +454,7 @@ public class Console {
 
                     for (Long id : toRemoveFromFile)
                         ids.remove(id);
+                    MediaCaching.redirectAllToLocal();
                     break;
                 }
                 case 7: {

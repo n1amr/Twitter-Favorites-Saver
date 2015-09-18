@@ -99,7 +99,7 @@ public class MediaCaching {
             if (!media.getString("type").equals("photo"))
                 continue;
             String url = media.getString("media_url");
-            if (url.startsWith("file:///"))
+            if (!url.startsWith("http"))
                 continue;
             File file = new File(Console.mediaFolder, url.substring(
                     Math.max(url.lastIndexOf("/"), url.lastIndexOf("\\")) + 1));
@@ -133,7 +133,7 @@ public class MediaCaching {
             File file = new File(Console.avatarsFolder, url.substring(
                     Math.max(url.lastIndexOf("/"), url.lastIndexOf("\\")) + 1));
             if (file.exists()) {
-                String newURL = "file:///" + file.getAbsolutePath();
+                String newURL = "profile_images/" + file.getName();
                 tweet.getJSONObject("user").put("profile_image_url_https",
                         newURL);
 
@@ -165,7 +165,7 @@ public class MediaCaching {
                         Math.max(url.lastIndexOf("/"), url.lastIndexOf("\\"))
                                 + 1));
                 if (file.exists()) {
-                    String newURL = "file:///" + file.getAbsolutePath();
+                    String newURL = "media/" + file.getName();
                     mediaArray.getJSONObject(i).put("media_url", newURL);
 
                     JSONObject entities = tweet.getJSONObject("entities")
