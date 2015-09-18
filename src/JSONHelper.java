@@ -1,12 +1,5 @@
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,7 +18,7 @@ public class JSONHelper {
     public static JSONArray getJSONArray(File file) {
         JSONArray jsonArray = null;
         try {
-            jsonArray = new JSONArray(readDataFromFile(file));
+            jsonArray = new JSONArray(FileHelper.readDataFromFile(file));
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -36,7 +29,7 @@ public class JSONHelper {
             throws JSONException, IOException {
 
         JSONObject jsonObject = (JSONObject) new JSONTokener(
-                readDataFromFile(file)).nextValue();
+                FileHelper.readDataFromFile(file)).nextValue();
         return jsonObject.get(parameterKey);
     }
 
@@ -79,7 +72,7 @@ public class JSONHelper {
     public static JSONArray loadJSONArray(File file) {
         JSONArray jsonArray = null;
         try {
-            jsonArray = new JSONArray(readDataFromFile(file));
+            jsonArray = new JSONArray(FileHelper.readDataFromFile(file));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -89,7 +82,7 @@ public class JSONHelper {
     public static JSONObject loadJSONObject(File file) {
         JSONObject jsonObject = null;
         try {
-            jsonObject = new JSONObject(readDataFromFile(file));
+            jsonObject = new JSONObject(FileHelper.readDataFromFile(file));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -98,7 +91,7 @@ public class JSONHelper {
 
     public static ArrayList<JSONObject> loadJSONObjects(File file)
             throws JSONException, IOException {
-        JSONArray jsonArray = new JSONArray(readDataFromFile(file));
+        JSONArray jsonArray = new JSONArray(FileHelper.readDataFromFile(file));
         return jsonArrayToJSONObjectsList(jsonArray);
     }
 
@@ -106,7 +99,8 @@ public class JSONHelper {
             throws JSONException, IOException {
         // JSONObject jsonObject = (JSONObject) new JSONTokener(
         // readDataFromFile(file)).nextValue();
-        JSONObject jsonObject = new JSONObject(readDataFromFile(file));
+        JSONObject jsonObject = new JSONObject(
+                FileHelper.readDataFromFile(file));
         return jsonObject.get(parameterKey);
     }
 
@@ -148,49 +142,30 @@ public class JSONHelper {
         return jsonObject;
     }
 
-    public static String readDataFromFile(File file) throws IOException {
-        BufferedReader reader = null;
-
-        reader = new BufferedReader(
-                new InputStreamReader(new FileInputStream(file)));
-
-        StringBuffer text = new StringBuffer();
-        String line;
-
-        while ((line = reader.readLine()) != null)
-            text.append(line + "\n");
-
-        try {
-            reader.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return text.toString();
-    }
-
     public static void saveArray(File file, JSONArray jsonArray)
             throws IOException {
-        writeDataIntoFile(file, jsonArray.toString());
+        FileHelper.writeDataIntoFile(file, jsonArray.toString());
     }
 
     public static void saveJSONArray(File file, JSONArray jsonArray)
             throws IOException {
-        writeDataIntoFile(file, jsonArray.toString());
+        FileHelper.writeDataIntoFile(file, jsonArray.toString());
     }
 
     public static void saveJSONObject(File file, JSONObject jsonObject)
             throws IOException {
-        writeDataIntoFile(file, jsonObject.toString());
+        FileHelper.writeDataIntoFile(file, jsonObject.toString());
     }
 
     public static void saveJSONObjects(File file, ArrayList<JSONObject> objects)
             throws IOException {
-        writeDataIntoFile(file, new JSONArray(objects).toString());
+        FileHelper.writeDataIntoFile(file, new JSONArray(objects).toString());
     }
 
     public static void saveParameters(File file, Map<String, Object> params)
             throws IOException {
-        writeDataIntoFile(file, parametersToJSONObject(params).toString());
+        FileHelper.writeDataIntoFile(file,
+                parametersToJSONObject(params).toString());
     }
 
     public static void test() throws IOException, JSONException {
@@ -206,34 +181,5 @@ public class JSONHelper {
         String name = (String) getParameter(testFile, "Name");
         Integer age = (Integer) getParameter(testFile, "Age");
         System.out.println(name + " " + age);
-    }
-
-    public static void writeDataIntoFile(File file, String data)
-            throws IOException {
-        Writer writer = null;
-        try {
-            writer = new BufferedWriter(
-                    new OutputStreamWriter(new FileOutputStream(file)));
-
-            writer.write(data);
-            writer.flush();
-            writer.close();
-
-        } catch (IOException e) {
-            try {
-                writer.close();
-            } catch (Exception e1) {
-                e1.printStackTrace();
-            }
-
-            throw e;
-        } finally {
-            try {
-                writer.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
     }
 }

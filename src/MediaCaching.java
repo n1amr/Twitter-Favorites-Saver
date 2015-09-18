@@ -37,9 +37,8 @@ public class MediaCaching {
                 return;
             }
             byte[] buf = new byte[1024];
-            while ((ByteRead = inputStream.read(buf)) != -1) {
+            while ((ByteRead = inputStream.read(buf)) != -1)
                 outputStream.write(buf, 0, ByteRead);
-            }
         } catch (Exception e) {
             e.printStackTrace();
             file.delete();
@@ -58,7 +57,7 @@ public class MediaCaching {
             throws JSONException, TwitterException {
         String url = tweet.getJSONObject("user")
                 .getString("profile_image_url_https");
-        File file = new File(Console.avatarsFolder, url.substring(
+        File file = new File(FileHelper.avatarsFolder, url.substring(
                 Math.max(url.lastIndexOf("/"), url.lastIndexOf("\\")) + 1));
         if (!file.exists() || update) {
             System.out.println("Caching profile image for: "
@@ -100,7 +99,7 @@ public class MediaCaching {
             String url = media.getString("media_url");
             if (!url.startsWith("http"))
                 continue;
-            File file = new File(Console.mediaFolder, url.substring(
+            File file = new File(FileHelper.mediaFolder, url.substring(
                     Math.max(url.lastIndexOf("/"), url.lastIndexOf("\\")) + 1));
             if (!file.exists() || update) {
                 System.out.println("Caching image: " + url);
@@ -129,7 +128,7 @@ public class MediaCaching {
         String url = tweet.getJSONObject("user")
                 .getString("profile_image_url_https");
         if (url.startsWith("http")) {
-            File file = new File(Console.avatarsFolder, url.substring(
+            File file = new File(FileHelper.avatarsFolder, url.substring(
                     Math.max(url.lastIndexOf("/"), url.lastIndexOf("\\")) + 1));
             if (file.exists()) {
                 String newURL = "profile_images/" + file.getName();
@@ -137,8 +136,8 @@ public class MediaCaching {
                         newURL);
 
                 long id = Long.valueOf(tweet.getString("id_str"));
-                Console.deleteTweet(id);
-                Console.saveTweet(tweet);
+                TweetsHelper.deleteTweet(id);
+                TweetsHelper.saveTweet(tweet);
                 System.out.println("Saved " + tweet.getString("created_at")
                         + " id= " + id);
             } else
@@ -160,7 +159,7 @@ public class MediaCaching {
 
             String url = mediaArray.getJSONObject(i).getString("media_url");
             if (url.startsWith("http")) {
-                File file = new File(Console.mediaFolder, url.substring(
+                File file = new File(FileHelper.mediaFolder, url.substring(
                         Math.max(url.lastIndexOf("/"), url.lastIndexOf("\\"))
                                 + 1));
                 if (file.exists()) {
@@ -172,8 +171,8 @@ public class MediaCaching {
                     tweet.put("entities", entities);
 
                     long id = Long.valueOf(tweet.getString("id_str"));
-                    Console.deleteTweet(id);
-                    Console.saveTweet(tweet);
+                    TweetsHelper.deleteTweet(id);
+                    TweetsHelper.saveTweet(tweet);
                     System.out.println("Saved " + tweet.getString("created_at")
                             + " id= " + id);
                 } else {
@@ -185,8 +184,8 @@ public class MediaCaching {
     }
 
     public static void redirectAllToLocal() throws Exception {
-        ArrayList<JSONObject> tweets = Console.loadAllTweet();
-        Collections.sort(tweets, Console.tweetsComparator);
+        ArrayList<JSONObject> tweets = FileHelper.loadAllTweets();
+        Collections.sort(tweets, TweetsHelper.tweetsComparator);
         Collections.reverse(tweets);
 
         for (JSONObject tweet : tweets) {
@@ -200,10 +199,10 @@ public class MediaCaching {
         }
 
         // Remove corrupted files
-        for (File file : Console.avatarsFolder.listFiles())
+        for (File file : FileHelper.avatarsFolder.listFiles())
             if (file.length() == 0)
                 file.delete();
-        for (File file : Console.mediaFolder.listFiles())
+        for (File file : FileHelper.mediaFolder.listFiles())
             if (file.length() == 0)
                 file.delete();
 
