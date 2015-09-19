@@ -4,6 +4,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+
 import twitter4j.JSONArray;
 import twitter4j.JSONException;
 import twitter4j.JSONObject;
@@ -25,8 +26,9 @@ public class UserData {
         for (int i = 0; i < users.length(); i++) {
             JSONObject jsonuser = users.getJSONObject(i);
             if (jsonuser.getInt("twitter.ID") == user.getId()) {
-                FileHelper.archiveDir = new File(
-                        jsonuser.getString("folder_path"));
+                if (jsonuser.has("folder_path"))
+                    FileHelper.archiveDir = new File(
+                            jsonuser.getString("folder_path"));
                 break;
             }
         }
