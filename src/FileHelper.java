@@ -20,22 +20,23 @@ import twitter4j.JSONObject;
 
 public class FileHelper {
 
-    static final File archiveDir = new File(
-            "D:\\Google Drive\\Backups\\Internet\\Twitter Favorites Archive");
-    static final File tweetsdataDir = new File(archiveDir, "data/js");
+    // static final File archiveDir = new File(
+    // "D:\\Google Drive\\Backups\\Internet\\Twitter Favorites Archive");
+    static File archiveDir = new File("Twitter Favorites Archive");
+    static File tweetsdataDir = new File(archiveDir, "data/js");
 
-    static final File htmlFolder = new File("data/savedHTML/");
-    static final File failedIdsFolder = new File("data/ids/failedIds/");
+    static File htmlFolder = new File("data/savedHTML/");
+    static File failedIdsFolder = new File("data/ids/failedIds/");
 
-    static final File indexFile = new File(tweetsdataDir.getAbsolutePath()
+    static File indexFile = new File(tweetsdataDir.getAbsolutePath()
             + File.separator + "tweet_index.js");
 
-    static final File avatarsFolder = new File(
+    static File avatarsFolder = new File(
             archiveDir.getAbsolutePath() + File.separator + "profile_images");
-    static final File mediaFolder = new File(
+    static File mediaFolder = new File(
             archiveDir.getAbsolutePath() + File.separator + "media");
 
-    static final File progressFile = new File("data/progress/progress.json");
+    static File progressFile = new File("data/progress/progress.json");
 
     public static void formatFile(int month, int year) throws Exception {
         String year_month = year + "_" + (month < 10 ? "0" + month : month);
@@ -209,11 +210,11 @@ public class FileHelper {
 
     }
 
-    static void updateEntryInIndexFile(JSONArray array, int month, int year)
-            throws IOException {
+    static void updateEntryInIndexFile(JSONArray tweetsArray, int month,
+            int year) throws IOException {
         String year_month = year + "_" + (month < 10 ? "0" + month : month);
         String tweetsIndexText = readDataFromFile(indexFile);
-        String tweetsIndexHeader = "var tweet_index =  ";
+        String tweetsIndexHeader = "var tweet_index = ";
         try {
 
             JSONArray jsonArray = new JSONArray(
@@ -235,7 +236,7 @@ public class FileHelper {
             entry.put("file_name", "data/js/tweets/" + year_month + ".js");
             entry.put("year", year);
             entry.put("var_name", "tweets_" + year_month);
-            entry.put("tweet_count", array.length());
+            entry.put("tweet_count", tweetsArray.length());
             entry.put("month", month);
             arrayList.add(entry);
 

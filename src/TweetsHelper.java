@@ -152,7 +152,7 @@ public class TweetsHelper {
                 header + unicodeEscape(newTweets.toString()));
 
         // Add to tweet_index.js
-        FileHelper.updateEntryInIndexFile(tweets, month, year);
+        FileHelper.updateEntryInIndexFile(newTweets, month, year);
     }
 
     public static JSONObject fastLoadSavedTweet(long tweetID)

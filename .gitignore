@@ -45,7 +45,4 @@ Temporary Items
 data/users.json
 src/API_Keys.java
 *.rar
-Twitter Archive/data/js/tweets/*
-Twitter Archive/media/*
-Twitter Archive/profile_images/*
-savedHTML/*
+Twitter Favorites Archive for*

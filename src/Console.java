@@ -9,6 +9,7 @@ import twitter4j.JSONException;
 import twitter4j.JSONObject;
 import twitter4j.Twitter;
 import twitter4j.TwitterException;
+import twitter4j.User;
 
 public class Console {
     static Scanner scanner;
@@ -17,9 +18,11 @@ public class Console {
     static TwitterApp twitterApp;
 
     static void login() throws JSONException, TwitterException {
-        twitterApp = new TwitterApp(
-                JSONHelper.loadJSONArray(TwitterApp.USERS_LOGIN_DATA_FILE)
-                        .getJSONObject(0));
+        System.out.println("Login:");
+        twitterApp = TwitterApp.signIn();
+        // twitterApp = new TwitterApp(
+        // JSONHelper.loadJSONArray(TwitterApp.USERS_LOGIN_DATA_FILE)
+        // .getJSONObject(0));
         twitter = twitterApp.getTwitter();
     }
 
@@ -31,6 +34,9 @@ public class Console {
 
         login();
 
+        User currentUser = twitter.showUser(twitter.getId());
+        UserData.load(currentUser);
+
         int response;
         do {
             System.out.println("1- Save favorites online from twitter");
@@ -41,6 +47,7 @@ public class Console {
             System.out.println("5- Remove a saved tweet");
             System.out.println("6- Retry failed");
             System.out.println("7- Save offline images");
+            System.out.println("8- Change account");
             System.out.println("0- Exit");
 
             response = scanner.nextInt();
@@ -48,19 +55,22 @@ public class Console {
 
             switch (response) {
                 case 1: {
-                    System.out.println("Is this the first time?");
-                    String res = scanner.nextLine().toUpperCase();
-                    if (res.contains("Y"))
+                    if (promptBoolean("Is this the first time?")) {
+                        if (promptBoolean("Start over?")) {
+                            // reset progress
+                            FileHelper.saveProgress(0, 1,
+                                    FileHelper.loadProgress().getLong("id"),
+                                    FileHelper.loadProgress().getInt("month"),
+                                    FileHelper.loadProgress().getInt("year"));
+                        }
                         SaveFavorites.saveFavoritesOnline();
-                    else
+                    } else
                         SaveFavorites.updateOnline();
                     MediaCaching.redirectAllToLocal();
                     break;
                 }
                 case 2: {
-                    System.out.println("Refresh files? (Y/N)");
-                    String res = scanner.nextLine().toUpperCase();
-                    if (res.contains("Y"))
+                    if (promptBoolean("Refresh files"))
                         FileHelper.collectIdsFromHTMLFolder(
                                 FileHelper.htmlFolder);
                     SaveFavorites.saveFavoritesFromSavedHTML();
@@ -139,6 +149,12 @@ public class Console {
                     MediaCaching.redirectAllToLocal();
                     break;
                 }
+                case 8: {
+                    login();
+                    currentUser = twitter.showUser(twitter.getId());
+                    UserData.load(currentUser);
+                    break;
+                }
             }
         } while (response != 0);
         System.out.println("End");
@@ -163,5 +179,13 @@ public class Console {
         } catch (Exception e2) {
             e2.printStackTrace();
         }
+    }
+
+    static boolean promptBoolean(String q) {
+        System.out.println(q + " (Y/N)");
+        String res = scanner.nextLine().toUpperCase();
+        if (res.contains("Y"))
+            return true;
+        return false;
     }
 }
