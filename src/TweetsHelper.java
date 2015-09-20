@@ -4,6 +4,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 
 import twitter4j.JSONArray;
 import twitter4j.JSONException;
@@ -260,8 +261,10 @@ public class TweetsHelper {
         return false;
     }
 
-    static SimpleDateFormat dateFormat = new SimpleDateFormat(
-            "E MMM dd hh:mm:ss +SSSS YYYY");
+    static SimpleDateFormat archiveDateFormat = new SimpleDateFormat(
+            "E MMM dd hh:mm:ss +SSSS yyyy");
+    static SimpleDateFormat myDateFormat = new SimpleDateFormat(
+            "MMM dd, yyyy - hh:mm");
     static ArrayList<JSONObject> allTweets = null;
 
     static void deleteTweetMedia(long id) throws JSONException, IOException {
@@ -318,9 +321,22 @@ public class TweetsHelper {
     }
 
     public static void printTweet(JSONObject tweet) throws JSONException {
+        System.out.println("******************************************");
+        String createdAt = tweet.getString("created_at");
+        try {
+            Date date = archiveDateFormat.parse(createdAt);
+            createdAt = myDateFormat.format(date);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        System.out.print(tweet.getJSONObject("user").getString("name") + " (@"
+                + tweet.getJSONObject("user").getString("screen_name")
+                + ") || ");
+        System.out.print(createdAt);
+        System.out.print(" || #" + tweet.getString("id_str"));
+        System.out.println();
         System.out.println("------------------------------------------");
-        System.out.println(tweet.getString("created_at"));
         System.out.println(tweet.getString("text"));
-
+        System.out.println("******************************************");
     }
 }

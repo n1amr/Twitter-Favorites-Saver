@@ -92,7 +92,7 @@ public class SaveFavorites {
                     FileHelper.loadProgress().getInt("month"),
                     FileHelper.loadProgress().getInt("year"));
 
-            System.out.println("------------------------------------");
+            System.out.println();
             i++; // go on if successful
         }
     }
@@ -137,9 +137,7 @@ public class SaveFavorites {
                         // Save progress
                         FileHelper.saveProgress(i, page,
                                 FileHelper.loadProgress().getLong("id"), m, y);
-
-                        System.out.println(
-                                "------------------------------------");
+                        System.out.println();
                         i++;
                     } catch (Exception e) {
                         if (e instanceof TwitterException
@@ -199,8 +197,7 @@ public class SaveFavorites {
                             n_saved = 0; // reset
                         TweetsHelper.saveTweet(jsonTweet);
 
-                        System.out.println(
-                                "------------------------------------");
+                        System.out.println();
                         i++;
                     } catch (Exception e) {
                         if (e instanceof TwitterException

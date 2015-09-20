@@ -51,7 +51,7 @@ public class Console {
         }
     }
 
-    static boolean promptBoolean(String q) {
+    static boolean askBoolean(String q) {
         System.out.println(q + " (Y/N)");
         String res = scanner.nextLine().toUpperCase();
         if (res.contains("Y"))
@@ -65,9 +65,6 @@ public class Console {
         TwitterApp.setScanner(scanner);
 
         login();
-
-        // if (5 != 2)
-        // return;
 
         int response;
         do {
@@ -88,8 +85,8 @@ public class Console {
 
             switch (response) {
                 case 1: {
-                    if (promptBoolean("Is this the first time?")) {
-                        if (promptBoolean("Start over?"))
+                    if (askBoolean("Is this the first time?")) {
+                        if (askBoolean("Start over?"))
                             SaveFavorites.resetProgress();
 
                         SaveFavorites.saveFavoritesOnline();
@@ -98,7 +95,7 @@ public class Console {
                     break;
                 }
                 case 2: {
-                    if (promptBoolean("Refresh files"))
+                    if (askBoolean("Refresh files?"))
                         FileHelper.collectIdsFromHTMLFolder(
                                 FileHelper.htmlFolder);
                     SaveFavorites.saveFavoritesFromSavedHTML();
@@ -120,7 +117,7 @@ public class Console {
                     long id = scanner.nextLong();
                     scanner.nextLine();
                     System.out.println("Loading tweet...");
-                    System.out.println(TweetsHelper.getTweet(id).get("text"));
+                    TweetsHelper.printTweet(TweetsHelper.getTweet(id));
                     TweetsHelper.saveTweet(id);
                     break;
                 }
@@ -132,7 +129,8 @@ public class Console {
                     JSONObject tweet = TweetsHelper.fastLoadSavedTweet(id);
 
                     System.out.println("Deleteing ...");
-                    System.out.println(tweet.get("text"));
+                    TweetsHelper.printTweet(tweet);
+
                     TweetsHelper.deleteTweetProfileImage(tweet);
                     TweetsHelper.deleteTweetImage(tweet);
                     TweetsHelper.deleteTweet(tweet);
@@ -158,7 +156,7 @@ public class Console {
 
                             JSONObject tweet = FileHelper.loadSavedTweet(id);
                             System.out.println("Successfully saved " + id);
-                            System.out.println(tweet.get("text"));
+                            TweetsHelper.printTweet(tweet);
 
                             toRemoveFromFile.add(id);
                         } catch (TwitterException e) {
@@ -186,6 +184,8 @@ public class Console {
                     break;
                 }
             }
+            System.out.println("Press ENTER to continue...");
+            scanner.nextLine();
         } while (response != 0);
         System.out.println("End");
     }
