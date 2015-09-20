@@ -53,105 +53,125 @@ public class MediaCaching {
         }
     }
 
-    public static void cacheProfileImage(JSONObject tweet, boolean update)
+    public static void saveProfileImage(JSONObject tweet, boolean update)
             throws JSONException, TwitterException {
         String url = tweet.getJSONObject("user")
                 .getString("profile_image_url_https");
+
         File file = new File(FileHelper.avatarsFolder, url.substring(
                 Math.max(url.lastIndexOf("/"), url.lastIndexOf("\\")) + 1));
-        if (!file.exists() || update) {
-            System.out.println("Caching profile image for: "
-                    + tweet.getJSONObject("user").getString("name") + " id="
-                    + tweet.getJSONObject("user").getString("id_str"));
 
+        if (file.exists() && !update)
+            return;
+
+        if (file.exists())
+            file.delete();
+
+        try {
+            if (url.startsWith("http")) {
+                System.out
+                        .println("Caching profile image of @"
+                                + tweet.getJSONObject("user").getString("name")
+                                + " (id=" + tweet.getJSONObject("user")
+                                        .getString("id_str")
+                                + ") to " + file.getName());
+
+                downloadFile(url, file);
+            }
+        } catch (Exception e) {
+            System.out.println(
+                    "Problem downloading profile image. Getting new link from twitter...");
+            long id = Long.valueOf(tweet.getString("id_str"));
+            Status status = Console.twitter.showStatus(id);
+            url = status.getUser().getProfileImageURL();
             file.delete();
             try {
-                if (url.startsWith("http")) {
-                    downloadFile(url, file);
-                    System.out.println(
-                            tweet.getJSONObject("user").getString("name"));
+                downloadFile(url, file);
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
+        }
+    }
+
+    public static void saveMediaImage(JSONObject tweet, boolean update)
+            throws JSONException, TwitterException {
+        if (!tweet.getJSONObject("entities").has("media"))
+            return;
+
+        JSONArray mediaArray = tweet.getJSONObject("entities")
+                .getJSONArray("media");
+
+        for (int i = 0; i < mediaArray.length(); i++) {
+            JSONObject media = mediaArray.getJSONObject(i);
+
+            if (!media.getString("type").equals("photo"))
+                continue;
+
+            String url = media.getString("media_url");
+            if (!url.startsWith("http"))
+                continue;
+
+            File file = new File(FileHelper.mediaFolder, url.substring(
+                    Math.max(url.lastIndexOf("/"), url.lastIndexOf("\\")) + 1));
+
+            if (file.exists() && !update)
+                return;
+
+            if (file.exists())
+                file.delete();
+
+            try {
+                System.out.println("Caching image: " + file.getName());
+                downloadFile(url, file);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+                try {
+                    if (file.exists())
+                        file.deleteOnExit();
+                } catch (Exception e2) {
+                    System.out.println("Cannot delete");
                 }
             } catch (Exception e) {
-                long id = Long.valueOf(tweet.getString("id_str"));
-                Status status = Console.twitter.showStatus(id);
-                url = status.getUser().getProfileImageURL();
-                file.delete();
-                try {
-                    downloadFile(url, file);
-                } catch (Exception e1) {
-                    e1.printStackTrace();
-                }
                 e.printStackTrace();
             }
         }
     }
 
-    public static void cacheMediaImage(JSONObject tweet, boolean update)
-            throws JSONException, TwitterException {
-        if (!tweet.getJSONObject("entities").has("media"))
-            return;
-        JSONArray mediaArray = tweet.getJSONObject("entities")
-                .getJSONArray("media");
-        for (int i = 0; i < mediaArray.length(); i++) {
-            JSONObject media = mediaArray.getJSONObject(i);
-            if (!media.getString("type").equals("photo"))
-                continue;
-            String url = media.getString("media_url");
-            if (!url.startsWith("http"))
-                continue;
-            File file = new File(FileHelper.mediaFolder, url.substring(
-                    Math.max(url.lastIndexOf("/"), url.lastIndexOf("\\")) + 1));
-            if (!file.exists() || update) {
-                System.out.println("Caching image: " + url);
-                System.out.println(tweet.getString("created_at"));
-
-                if (file.exists())
-                    file.delete();
-                try {
-                    downloadFile(url, file);
-                } catch (FileNotFoundException e) {
-                    try {
-                        if (file.exists())
-                            file.deleteOnExit();
-                    } catch (Exception e2) {
-                        System.out.println("Cannot delete");
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-    }
-
-    public static void redirectProfileImageToCache(JSONObject tweet)
+    public static JSONObject redirectToLocalProfileImage(JSONObject tweet)
             throws Exception {
-        String url = tweet.getJSONObject("user")
+        boolean edited = false;
+        JSONObject newTweet = new JSONObject(tweet.toString());
+
+        String url = newTweet.getJSONObject("user")
                 .getString("profile_image_url_https");
         if (url.startsWith("http")) {
             File file = new File(FileHelper.avatarsFolder, url.substring(
                     Math.max(url.lastIndexOf("/"), url.lastIndexOf("\\")) + 1));
-            if (file.exists()) {
-                String newURL = "profile_images/" + file.getName();
-                tweet.getJSONObject("user").put("profile_image_url_https",
-                        newURL);
 
-                long id = Long.valueOf(tweet.getString("id_str"));
-                TweetsHelper.deleteTweet(id);
-                TweetsHelper.saveTweet(tweet);
-                System.out.println("Saved " + tweet.getString("created_at")
-                        + " id= " + id);
+            if (file.exists()) {
+                newTweet.getJSONObject("user").put("profile_image_url_https",
+                        "profile_images/" + file.getName());
+                edited = true;
             } else
-                System.out.println("File " + file.getName()
-                        + " not found for user"
-                        + tweet.getJSONObject("user").getString("name"));
+                System.out.println("Profile Image " + file.getName() + " for @"
+                        + tweet.getJSONObject("user").getString("name")
+                        + " was not found");
         }
+        if (edited)
+            return newTweet;
+        else
+            return tweet;
     }
 
-    public static void redirectMediaImageToCache(JSONObject tweet)
+    public static JSONObject redirectToLocalImage(JSONObject tweet)
             throws Exception {
         if (!tweet.getJSONObject("entities").has("media"))
-            return;
-        JSONArray mediaArray = tweet.getJSONObject("entities")
+            return tweet;
+
+        boolean edited = false;
+        JSONObject newTweet = new JSONObject(tweet.toString());
+
+        JSONArray mediaArray = newTweet.getJSONObject("entities")
                 .getJSONArray("media");
         for (int i = 0; i < mediaArray.length(); i++) {
             if (!mediaArray.getJSONObject(i).getString("type").equals("photo"))
@@ -166,36 +186,39 @@ public class MediaCaching {
                     String newURL = "media/" + file.getName();
                     mediaArray.getJSONObject(i).put("media_url", newURL);
 
-                    JSONObject entities = tweet.getJSONObject("entities")
-                            .put("media", mediaArray);
-                    tweet.put("entities", entities);
+                    JSONObject newEntities = newTweet.getJSONObject("entities");
+                    newEntities.put("media", mediaArray);
+                    newTweet.put("entities", newEntities);
 
-                    long id = Long.valueOf(tweet.getString("id_str"));
-                    TweetsHelper.deleteTweet(id);
-                    TweetsHelper.saveTweet(tweet);
-                    System.out.println("Saved " + tweet.getString("created_at")
-                            + " id= " + id);
+                    edited = true;
                 } else {
-                    System.out.println("File not found " + file.getName());
-                    System.out.println(tweet.getString("id_str"));
+                    System.out.println("File " + file.getName()
+                            + " for tweet id = " + tweet.getString("id_str")
+                            + " was not found");
                 }
             }
         }
+
+        if (edited)
+            return newTweet;
+        else
+            return tweet;
     }
 
-    public static void redirectAllToLocal() throws Exception {
+    public static void redirectAllTweetsMediaToLocal() throws Exception {
         ArrayList<JSONObject> tweets = FileHelper.loadAllTweets();
         Collections.sort(tweets, TweetsHelper.tweetsComparator);
-        Collections.reverse(tweets);
+        // Collections.reverse(tweets); //TODO
 
         for (JSONObject tweet : tweets) {
-            cacheProfileImage(tweet, false);
-            cacheMediaImage(tweet, false);
-        }
+            saveProfileImage(tweet, false);
+            saveMediaImage(tweet, false);
 
-        for (JSONObject tweet : tweets) {
-            redirectProfileImageToCache(tweet);
-            redirectMediaImageToCache(tweet);
+            JSONObject oldTweet = tweet;
+            tweet = redirectToLocalProfileImage(tweet);
+            tweet = redirectToLocalImage(tweet);
+            if (tweet != oldTweet)
+                TweetsHelper.saveTweet(tweet, false);
         }
 
         // Remove corrupted files
@@ -205,7 +228,5 @@ public class MediaCaching {
         for (File file : FileHelper.mediaFolder.listFiles())
             if (file.length() == 0)
                 file.delete();
-
     }
-
 }

@@ -1,4 +1,5 @@
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -17,28 +18,60 @@ public class Console {
     static Twitter twitter;
     static TwitterApp twitterApp;
 
-    static void login() throws JSONException, TwitterException {
-        System.out.println("Login:");
+    static void login() throws JSONException, TwitterException,
+            IllegalStateException, IOException {
+        System.out.println("Choose account:");
         twitterApp = TwitterApp.signIn();
-        // twitterApp = new TwitterApp(
-        // JSONHelper.loadJSONArray(TwitterApp.USERS_LOGIN_DATA_FILE)
-        // .getJSONObject(0));
         twitter = twitterApp.getTwitter();
+
+        User currentUser = twitter.showUser(twitter.getId());
+        UserData.load(currentUser);
+
+        System.out.println("Logged in as: " + currentUser.getScreenName());
+    }
+
+    static void pause(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (Exception e2) {
+            e2.printStackTrace();
+        }
+    }
+
+    static void rateLimitWait(TwitterException e) {
+        System.err.println("Rate limit exceeded");
+        int seconds = e.getRateLimitStatus().getSecondsUntilReset();
+        System.out.println("Waiting for " + seconds + " seconds.");
+        Date date = new Date(new Date().getTime() + seconds * 1000 + 3000);
+        System.out.println("Retry on " + date.toString());
+        try {
+            Thread.sleep(1000 * seconds + 3000);
+        } catch (Exception e2) {
+            e2.printStackTrace();
+        }
+    }
+
+    static boolean promptBoolean(String q) {
+        System.out.println(q + " (Y/N)");
+        String res = scanner.nextLine().toUpperCase();
+        if (res.contains("Y"))
+            return true;
+        return false;
     }
 
     public static void main(String[] args) throws Exception {
         System.out.println("Start");
-        System.out.println("Logging in...");
         scanner = new Scanner(System.in);
         TwitterApp.setScanner(scanner);
 
         login();
 
-        User currentUser = twitter.showUser(twitter.getId());
-        UserData.load(currentUser);
+        // if (5 != 2)
+        // return;
 
         int response;
         do {
+            System.out.println("*********************************************");
             System.out.println("1- Save favorites online from twitter");
             System.out.println(
                     "2- Save favorites offline from html files in \"savedHTML\" folder");
@@ -64,9 +97,9 @@ public class Console {
                                     FileHelper.loadProgress().getInt("year"));
                         }
                         SaveFavorites.saveFavoritesOnline();
-                    } else
+                    } else {
                         SaveFavorites.updateOnline();
-                    MediaCaching.redirectAllToLocal();
+                    }
                     break;
                 }
                 case 2: {
@@ -74,7 +107,6 @@ public class Console {
                         FileHelper.collectIdsFromHTMLFolder(
                                 FileHelper.htmlFolder);
                     SaveFavorites.saveFavoritesFromSavedHTML();
-                    MediaCaching.redirectAllToLocal();
                     break;
                 }
                 case 3: {
@@ -88,21 +120,23 @@ public class Console {
                     System.out.print("Enter id:");
                     long id = scanner.nextLong();
                     scanner.nextLine();
-                    System.out.println("Adding ...");
+                    System.out.println("Loading tweet...");
                     System.out.println(TweetsHelper.getTweet(id).get("text"));
                     TweetsHelper.saveTweet(id);
-                    MediaCaching.redirectAllToLocal();
                     break;
                 }
                 case 5: {
                     System.out.print("Enter id:");
                     long id = scanner.nextLong();
                     scanner.nextLine();
+
+                    JSONObject tweet = TweetsHelper.fastLoadSavedTweet(id);
+
                     System.out.println("Deleteing ...");
-                    System.out.println(
-                            TweetsHelper.fastLoadSavedTweet(id).get("text"));
-                    // TODO MediaCaching.deleteMediaForTweet(id);
-                    TweetsHelper.deleteTweet(id);
+                    System.out.println(tweet.get("text"));
+                    TweetsHelper.deleteTweetProfileImage(tweet);
+                    TweetsHelper.deleteTweetImage(tweet);
+                    TweetsHelper.deleteTweet(tweet);
                     break;
                 }
                 case 6: {
@@ -142,7 +176,6 @@ public class Console {
 
                     for (Long id : toRemoveFromFile)
                         ids.remove(id);
-                    MediaCaching.redirectAllToLocal();
                     break;
                 }
                 case 7: {
@@ -151,41 +184,10 @@ public class Console {
                 }
                 case 8: {
                     login();
-                    currentUser = twitter.showUser(twitter.getId());
-                    UserData.load(currentUser);
                     break;
                 }
             }
         } while (response != 0);
         System.out.println("End");
-    }
-
-    static void pause(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (Exception e2) {
-            e2.printStackTrace();
-        }
-    }
-
-    static void rateLimitWait(TwitterException e) {
-        System.err.println("Rate limit exceeded");
-        int seconds = e.getRateLimitStatus().getSecondsUntilReset();
-        System.out.println("Waiting for " + seconds + " seconds.");
-        Date date = new Date(new Date().getTime() + seconds * 1000 + 3000);
-        System.out.println("Retry on " + date.toString());
-        try {
-            Thread.sleep(1000 * seconds + 3000);
-        } catch (Exception e2) {
-            e2.printStackTrace();
-        }
-    }
-
-    static boolean promptBoolean(String q) {
-        System.out.println(q + " (Y/N)");
-        String res = scanner.nextLine().toUpperCase();
-        if (res.contains("Y"))
-            return true;
-        return false;
     }
 }

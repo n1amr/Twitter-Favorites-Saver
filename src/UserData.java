@@ -1,9 +1,5 @@
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 
 import twitter4j.JSONArray;
 import twitter4j.JSONException;
@@ -20,7 +16,6 @@ public class UserData {
                 new File("Twitter Favorites Archive").getAbsolutePath()
                         + " for " + user.getScreenName());
 
-        //
         JSONArray users = JSONHelper
                 .loadJSONArray(TwitterApp.USERS_LOGIN_DATA_FILE);
         for (int i = 0; i < users.length(); i++) {
@@ -39,6 +34,9 @@ public class UserData {
         FileHelper.mediaFolder = new File(
                 FileHelper.archiveDir.getAbsolutePath() + File.separator
                         + "media");
+        FileHelper.recycledMediaFolder = new File(
+                FileHelper.archiveDir.getAbsolutePath() + File.separator
+                        + "recycled media");
         FileHelper.tweetsdataDir = new File(FileHelper.archiveDir, "data/js");
         FileHelper.indexFile = new File(
                 FileHelper.tweetsdataDir.getAbsolutePath() + File.separator
@@ -62,6 +60,7 @@ public class UserData {
 
         FileHelper.avatarsFolder.mkdirs();
         FileHelper.mediaFolder.mkdirs();
+        FileHelper.recycledMediaFolder.mkdirs();
 
         copyFile(emptyArchiveFolder, newArchiveFolder,
                 "css/application.min.css");
@@ -111,23 +110,7 @@ public class UserData {
         File file1 = new File(emptyArchiveFolder, absoluteFilename);
         File file2 = new File(newArchiveFolder, absoluteFilename);
         assureFileExists(file2);
-        copyFile(file1, file2);
-    }
-
-    private static void copyFile(File source, File dest) throws IOException {
-        InputStream input = null;
-        OutputStream output = null;
-        try {
-            input = new FileInputStream(source);
-            output = new FileOutputStream(dest);
-            byte[] buf = new byte[1024];
-            int bytesRead;
-            while ((bytesRead = input.read(buf)) > 0)
-                output.write(buf, 0, bytesRead);
-        } finally {
-            input.close();
-            output.close();
-        }
+        FileHelper.copyFile(file1, file2);
     }
 
     private static void makeJsData(User user) throws IOException,

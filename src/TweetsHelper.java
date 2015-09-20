@@ -125,6 +125,10 @@ public class TweetsHelper {
 
     public static void deleteTweet(long id) throws Exception {
         JSONObject deletedTweet = fastLoadSavedTweet(id);
+        deleteTweet(deletedTweet);
+    }
+
+    public static void deleteTweet(JSONObject deletedTweet) throws Exception {
         String id_str = deletedTweet.getString("id_str");
 
         String createdAt = deletedTweet.getString("created_at");
@@ -179,34 +183,71 @@ public class TweetsHelper {
         return jsonTweet;
     }
 
-    public static void saveTweet(long id) throws Exception {
-        saveTweet(getTweet(id));
+    public static void saveTweet(long id, boolean override) throws Exception {
+        saveTweet(getTweet(id), override);
     }
 
-    public static void saveTweet(JSONObject jsonTweet) throws Exception {
-        String createdAt = jsonTweet.getString("created_at");
+    public static void saveTweet(long id) throws Exception {
+        saveTweet(id, false);
+    }
+
+    public static void saveTweet(JSONObject tweet) throws Exception {
+        saveTweet(tweet, false);
+    }
+
+    public static void saveTweet(JSONObject tweet, boolean override)
+            throws Exception {
+        String createdAt = tweet.getString("created_at");
         int month = getMonth(createdAt);
         int year = getYear(createdAt);
         String year_month = year + "_" + (month < 10 ? "0" + month : month);
 
-        // Add to json array
+        // Save media locally
+        MediaCaching.saveProfileImage(tweet, false);
+        tweet = MediaCaching.redirectToLocalProfileImage(tweet);
+
+        MediaCaching.saveMediaImage(tweet, false);
+        tweet = MediaCaching.redirectToLocalImage(tweet);
+
+        // Load tweets in the file
         File tweetsFile = FileHelper.getTweetsFile(month, year);
         String header = "Grailbird.data.tweets_" + year_month + " = ";
         JSONArray array = FileHelper.loadTweetsOfMonth(month, year);
 
-        // Add tweet and pevent duplicates
-        if (array.length() == 0 || !tweetExists(jsonTweet, array))
-            array.put(jsonTweet);
-        else
-            System.out.println("Skipped");
+        // Add tweet and prevent duplicates
+        JSONArray newTweets = new JSONArray();
+        JSONObject oldTweet = null;
+        String id = tweet.getString("id_str");
 
-        array = sortTweets(array, tweetsComparator);
+        // Put other tweets and save the old one if it exists
+        for (int i = 0; i < array.length(); i++) {
+            JSONObject tweet2 = array.getJSONObject(i);
+            String id2 = tweet2.getString("id_str");
+            if (id.equals(id2))
+                oldTweet = tweet2;
+            else
+                newTweets.put(tweet2);
+        }
+
+        if (oldTweet == null) {
+            newTweets.put(tweet);
+        } else {
+            if (override) {
+                newTweets.put(tweet);
+            } else {
+                newTweets.put(oldTweet);
+                System.out.println(
+                        "Skipped; This tweet has already been saved #" + id);
+            }
+        }
+
+        newTweets = sortTweets(newTweets, tweetsComparator);
 
         FileHelper.writeDataIntoFile(tweetsFile,
-                header + unicodeEscape(array.toString()));
+                header + unicodeEscape(newTweets.toString()));
 
         // Add to tweet_index.js
-        FileHelper.updateEntryInIndexFile(array, month, year);
+        FileHelper.updateEntryInIndexFile(newTweets, month, year);
     }
 
     public static boolean tweetExists(JSONObject tweet, JSONArray tweets)
@@ -225,4 +266,63 @@ public class TweetsHelper {
             "E MMM dd hh:mm:ss +SSSS YYYY");
     static ArrayList<JSONObject> allTweets = null;
 
+    static void deleteTweetMedia(long id) throws JSONException, IOException {
+        JSONObject tweet = FileHelper.loadSavedTweet(id);
+        deleteTweetImage(tweet);
+    }
+
+    static void deleteTweetImage(JSONObject tweet)
+            throws JSONException, IOException {
+        if (!tweet.getJSONObject("entities").has("media"))
+            return;
+        JSONArray mediaArray = tweet.getJSONObject("entities")
+                .getJSONArray("media");
+        for (int i = 0; i < mediaArray.length(); i++) {
+            JSONObject media = mediaArray.getJSONObject(i);
+
+            if (!(media.getString("type").equals("photo")
+                    && !media.getString("media_url").startsWith("http")))
+                continue;
+
+            String url = media.getString("media_url");
+
+            File file = new File(FileHelper.mediaFolder,
+                    media.getString("media_url")
+                            .substring(Math.max(url.lastIndexOf("/"),
+                                    url.lastIndexOf("\\")) + 1));
+            System.out.println("Deleting: " + file.getAbsolutePath());
+            if (file.exists()) {
+                FileHelper.copyFile(file, new File(
+                        FileHelper.recycledMediaFolder, file.getName()));
+                file.delete();
+            }
+        }
+    }
+
+    static void deleteTweetProfileImage(JSONObject tweet)
+            throws JSONException, IOException {
+        String url = tweet.getJSONObject("user")
+                .getString("profile_image_url_https");
+
+        if (url.startsWith("http"))
+            return;
+
+        File file = new File(FileHelper.avatarsFolder, url.substring(
+                Math.max(url.lastIndexOf("/"), url.lastIndexOf("\\")) + 1));
+
+        System.out.println("Deleting: " + file.getAbsolutePath());
+        if (file.exists()) {
+            FileHelper.copyFile(file,
+                    new File(FileHelper.recycledMediaFolder, file.getName()));
+            file.delete();
+        }
+
+    }
+
+    public static void printTweet(JSONObject tweet) throws JSONException {
+        System.out.println("------------------------------------------");
+        System.out.println(tweet.getString("created_at"));
+        System.out.println(tweet.getString("text"));
+    
+    }
 }

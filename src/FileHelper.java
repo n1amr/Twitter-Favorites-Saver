@@ -5,7 +5,9 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.Writer;
@@ -35,6 +37,8 @@ public class FileHelper {
             archiveDir.getAbsolutePath() + File.separator + "profile_images");
     static File mediaFolder = new File(
             archiveDir.getAbsolutePath() + File.separator + "media");
+    static File recycledMediaFolder = new File(
+            archiveDir.getAbsolutePath() + File.separator + "recycled media");
 
     static File progressFile = new File("data/progress/progress.json");
 
@@ -322,6 +326,22 @@ public class FileHelper {
                 loadProgress().getLong("id"), loadProgress().getInt("month"),
                 loadProgress().getInt("year"));
         writeIDsintoFile(allids, new File("ids/ids.txt"));
+    }
+
+    static void copyFile(File source, File dest) throws IOException {
+        InputStream input = null;
+        OutputStream output = null;
+        try {
+            input = new FileInputStream(source);
+            output = new FileOutputStream(dest);
+            byte[] buf = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = input.read(buf)) > 0)
+                output.write(buf, 0, bytesRead);
+        } finally {
+            input.close();
+            output.close();
+        }
     }
 
 }

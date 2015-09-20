@@ -45,8 +45,7 @@ public class SaveFavorites {
                 try {
                     if (!isChecked(id)) {
                         jsonTweet = TweetsHelper.getTweet(id);
-                        System.out.println(jsonTweet.getString("text"));
-                        System.out.println(jsonTweet.getString("created_at"));
+                        TweetsHelper.printTweet(jsonTweet);
 
                         TweetsHelper.saveTweet(jsonTweet);
 
@@ -61,7 +60,7 @@ public class SaveFavorites {
                                 y);
 
                         // Slow down for rate limit
-                        // pause(2000);
+                        // Console.pause(2000);
                     }
                 } catch (Exception e) {
                     TwitterException twitterErr = (TwitterException) e;
@@ -81,9 +80,10 @@ public class SaveFavorites {
                     }
                 }
             else { // was saved before
-                System.out.println(jsonTweet.getString("text"));
-                System.out.println(jsonTweet.getString("created_at"));
-                System.out.println("SKIPPED");
+                TweetsHelper.printTweet(jsonTweet);
+                System.out
+                        .println("Skipped; This tweet has already been saved #"
+                                + jsonTweet.getString("id_str"));
             }
 
             // Save progress
@@ -126,8 +126,7 @@ public class SaveFavorites {
                         String json = TwitterObjectFactory.getRawJSON(status);
                         JSONObject jsonTweet = new JSONObject(json);
 
-                        System.out.println(jsonTweet.getString("text"));
-                        System.out.println(jsonTweet.getString("created_at"));
+                        TweetsHelper.printTweet(jsonTweet);
 
                         TweetsHelper.saveTweet(jsonTweet);
 
@@ -152,7 +151,7 @@ public class SaveFavorites {
                             Console.pause(10000);
                         }
                     }
-                    Console.pause(2000);
+                    // Console.pause(2000);
                 }
                 page++;
             } catch (Exception e) {
@@ -189,8 +188,7 @@ public class SaveFavorites {
                         String json = TwitterObjectFactory.getRawJSON(status);
                         JSONObject jsonTweet = new JSONObject(json);
 
-                        System.out.println(jsonTweet.getString("text"));
-                        System.out.println(jsonTweet.getString("created_at"));
+                        TweetsHelper.printTweet(jsonTweet);
 
                         // Stop if 20 consecutive tweets are saved before
                         if (TweetsHelper.tweetExists(jsonTweet, allTweets)) {
@@ -214,7 +212,7 @@ public class SaveFavorites {
                             Console.pause(10000);
                         }
                     }
-                    Console.pause(2000);
+                    // Console.pause(2000);
                 }
                 page++;
             } catch (Exception e) {
