@@ -229,16 +229,14 @@ public class TweetsHelper {
                 newTweets.put(tweet2);
         }
 
-        if (oldTweet == null) {
+        if (oldTweet == null)
             newTweets.put(tweet);
-        } else {
-            if (override) {
-                newTweets.put(tweet);
-            } else {
-                newTweets.put(oldTweet);
-                System.out.println(
-                        "Skipped; This tweet has already been saved #" + id);
-            }
+        else if (override)
+            newTweets.put(tweet);
+        else {
+            newTweets.put(oldTweet);
+            System.out.println(
+                    "Skipped; This tweet has already been saved #" + id);
         }
 
         newTweets = sortTweets(newTweets, tweetsComparator);
@@ -323,6 +321,6 @@ public class TweetsHelper {
         System.out.println("------------------------------------------");
         System.out.println(tweet.getString("created_at"));
         System.out.println(tweet.getString("text"));
-    
+
     }
 }

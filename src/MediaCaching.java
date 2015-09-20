@@ -191,11 +191,10 @@ public class MediaCaching {
                     newTweet.put("entities", newEntities);
 
                     edited = true;
-                } else {
+                } else
                     System.out.println("File " + file.getName()
                             + " for tweet id = " + tweet.getString("id_str")
                             + " was not found");
-                }
             }
         }
 

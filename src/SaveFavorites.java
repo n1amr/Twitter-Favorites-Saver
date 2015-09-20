@@ -284,4 +284,10 @@ public class SaveFavorites {
 
     static HashSet<Long> checkedIds = null;
 
+    public static void resetProgress() throws JSONException, IOException {
+        FileHelper.saveProgress(0, 1, FileHelper.loadProgress().getLong("id"),
+                FileHelper.loadProgress().getInt("month"),
+                FileHelper.loadProgress().getInt("year"));
+    }
+
 }

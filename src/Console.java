@@ -89,17 +89,12 @@ public class Console {
             switch (response) {
                 case 1: {
                     if (promptBoolean("Is this the first time?")) {
-                        if (promptBoolean("Start over?")) {
-                            // reset progress
-                            FileHelper.saveProgress(0, 1,
-                                    FileHelper.loadProgress().getLong("id"),
-                                    FileHelper.loadProgress().getInt("month"),
-                                    FileHelper.loadProgress().getInt("year"));
-                        }
+                        if (promptBoolean("Start over?"))
+                            SaveFavorites.resetProgress();
+
                         SaveFavorites.saveFavoritesOnline();
-                    } else {
+                    } else
                         SaveFavorites.updateOnline();
-                    }
                     break;
                 }
                 case 2: {
@@ -113,7 +108,11 @@ public class Console {
                     System.out.print("Enter id:");
                     long id = scanner.nextLong();
                     scanner.nextLine();
-                    System.out.println(FileHelper.loadSavedTweet(id));
+                    JSONObject tweet = FileHelper.loadSavedTweet(id);
+                    if (tweet != null)
+                        TweetsHelper.printTweet(tweet);
+                    else
+                        System.out.println("This tweet is not saved");
                     break;
                 }
                 case 4: {
@@ -179,7 +178,7 @@ public class Console {
                     break;
                 }
                 case 7: {
-                    MediaCaching.redirectAllToLocal();
+                    MediaCaching.redirectAllTweetsMediaToLocal();
                     break;
                 }
                 case 8: {
