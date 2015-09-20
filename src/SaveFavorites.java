@@ -21,13 +21,13 @@ public class SaveFavorites {
 
     static void saveFavoritesFromSavedHTML() throws JSONException, IOException {
         // Load ids
-        File idsFile = new File("ids.txt");
+        File idsFile = new File("data/ids/ids.txt");
+        FileHelper.assureFileExists(idsFile);
         ArrayList<Long> ids = FileHelper.readIDsfromFile(idsFile);
         System.out.println("Found " + ids.size() + " ids");
 
         // Load progress
-        JSONObject progress = JSONHelper
-                .loadJSONObject(FileHelper.progressFile);
+        JSONObject progress = FileHelper.loadProgress();
         int start_i = progress.getInt("i");
 
         for (int i = start_i; i < ids.size();) {
@@ -99,8 +99,7 @@ public class SaveFavorites {
 
     static void saveFavoritesOnline() throws JSONException {
         // Load progress
-        JSONObject progress = JSONHelper
-                .loadJSONObject(FileHelper.progressFile);
+        JSONObject progress = FileHelper.loadProgress();
         int page = progress.getInt("page");
         int start_i = progress.getInt("i");
 
@@ -254,9 +253,11 @@ public class SaveFavorites {
         return checkedIds.add(id);
     }
 
-    static void markDeleted(long id) {
+    static void markDeleted(long id) throws IOException {
         File deletedIdsFile = new File(FileHelper.failedIdsFolder,
                 "deleted.txt");
+        FileHelper.assureFileExists(deletedIdsFile);
+
         ArrayList<Long> ids = FileHelper.readIDsfromFile(deletedIdsFile);
 
         ids.add(id);
@@ -269,6 +270,7 @@ public class SaveFavorites {
 
     static void markFailed(long id) throws IOException {
         File failedIdsFile = new File(FileHelper.failedIdsFolder, "failed.txt");
+        FileHelper.assureFileExists(failedIdsFile);
         ArrayList<Long> ids = FileHelper.readIDsfromFile(failedIdsFile);
 
         ids.add(id);

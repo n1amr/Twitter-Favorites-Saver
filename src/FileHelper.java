@@ -21,9 +21,6 @@ import twitter4j.JSONException;
 import twitter4j.JSONObject;
 
 public class FileHelper {
-
-    // static final File archiveDir = new File(
-    // "D:\\Google Drive\\Backups\\Internet\\Twitter Favorites Archive");
     static File archiveDir = new File("Twitter Favorites Archive");
     static File tweetsdataDir = new File(archiveDir, "data/js");
 
@@ -113,6 +110,28 @@ public class FileHelper {
     }
 
     static JSONObject loadProgress() {
+        if (!progressFile.exists())
+            try {
+                progressFile.getParentFile().mkdirs();
+                progressFile.createNewFile();
+
+                JSONObject jsonObject = new JSONObject();
+
+                try {
+                    jsonObject.put("i", 0);
+                    jsonObject.put("page", 1);
+                    jsonObject.put("month", 1);
+                    jsonObject.put("year", 2000);
+                    jsonObject.put("id", 0);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+                JSONHelper.saveJSONObject(progressFile, jsonObject);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
         return JSONHelper.loadJSONObject(progressFile);
     }
 
@@ -204,14 +223,13 @@ public class FileHelper {
 
     static void saveProgress(int i, int page, long id, int month, int year)
             throws JSONException, IOException {
-        JSONObject progress = new JSONObject();
+        JSONObject progress = loadProgress();
         progress.put("page", page);
         progress.put("i", i);
         progress.put("id", id);
         progress.put("month", month);
         progress.put("year", year);
         JSONHelper.saveJSONObject(progressFile, progress);
-
     }
 
     static void updateEntryInIndexFile(JSONArray tweetsArray, int month,
@@ -220,7 +238,6 @@ public class FileHelper {
         String tweetsIndexText = readDataFromFile(indexFile);
         String tweetsIndexHeader = "var tweet_index = ";
         try {
-
             JSONArray jsonArray = new JSONArray(
                     tweetsIndexText.substring(tweetsIndexHeader.length()));
             ArrayList<JSONObject> arrayList = new ArrayList<>();
@@ -235,14 +252,16 @@ public class FileHelper {
                     arrayList.add(entry);
             }
 
-            // Add new
-            JSONObject entry = new JSONObject();
-            entry.put("file_name", "data/js/tweets/" + year_month + ".js");
-            entry.put("year", year);
-            entry.put("var_name", "tweets_" + year_month);
-            entry.put("tweet_count", tweetsArray.length());
-            entry.put("month", month);
-            arrayList.add(entry);
+            if (tweetsArray.length() > 0) {
+                // Add new
+                JSONObject entry = new JSONObject();
+                entry.put("file_name", "data/js/tweets/" + year_month + ".js");
+                entry.put("year", year);
+                entry.put("var_name", "tweets_" + year_month);
+                entry.put("tweet_count", tweetsArray.length());
+                entry.put("month", month);
+                arrayList.add(entry);
+            }
 
             Collections.sort(arrayList, TweetsHelper.filesComparator);
 
@@ -294,6 +313,7 @@ public class FileHelper {
             outputStream = new FileOutputStream(file);
         } catch (FileNotFoundException e) {
             try {
+                file.getParentFile().mkdirs();
                 file.createNewFile();
                 outputStream = new FileOutputStream(file);
             } catch (IOException e1) {
@@ -325,7 +345,9 @@ public class FileHelper {
         saveProgress(0, loadProgress().getInt("page"),
                 loadProgress().getLong("id"), loadProgress().getInt("month"),
                 loadProgress().getInt("year"));
-        writeIDsintoFile(allids, new File("ids/ids.txt"));
+        File idsFile = new File("ids/ids.txt");
+        assureFileExists(idsFile);
+        writeIDsintoFile(allids, idsFile);
     }
 
     static void copyFile(File source, File dest) throws IOException {
@@ -341,6 +363,26 @@ public class FileHelper {
         } finally {
             input.close();
             output.close();
+        }
+    }
+
+    static void copyFile(File emptyArchiveFolder, File newArchiveFolder,
+            String absoluteFilename) throws IOException {
+        File file1 = new File(emptyArchiveFolder, absoluteFilename);
+        File file2 = new File(newArchiveFolder, absoluteFilename);
+        FileHelper.assureFileExists(file2);
+        copyFile(file1, file2);
+    }
+
+    static void assureFolderExists(File folder) throws IOException {
+        if (!folder.exists())
+            folder.mkdirs();
+    }
+
+    static void assureFileExists(File file) throws IOException {
+        if (!file.exists()) {
+            file.getParentFile().mkdirs();
+            file.createNewFile();
         }
     }
 

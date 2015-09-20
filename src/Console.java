@@ -18,6 +18,17 @@ public class Console {
     static Twitter twitter;
     static TwitterApp twitterApp;
 
+    static void initialize() throws Exception {
+        System.out.println("Start");
+        scanner = new Scanner(System.in);
+        TwitterApp.setScanner(scanner);
+
+        FileHelper.assureFolderExists(FileHelper.htmlFolder);
+        FileHelper.assureFolderExists(FileHelper.failedIdsFolder);
+
+        login();
+    }
+
     static void login() throws JSONException, TwitterException,
             IllegalStateException, IOException {
         System.out.println("Choose account:");
@@ -60,11 +71,7 @@ public class Console {
     }
 
     public static void main(String[] args) throws Exception {
-        System.out.println("Start");
-        scanner = new Scanner(System.in);
-        TwitterApp.setScanner(scanner);
-
-        login();
+        initialize();
 
         int response;
         do {
@@ -78,6 +85,7 @@ public class Console {
             System.out.println("6- Retry failed");
             System.out.println("7- Save offline images");
             System.out.println("8- Change account");
+            System.out.println("9- Show the most recent saved tweet");
             System.out.println("0- Exit");
 
             response = scanner.nextInt();
@@ -139,6 +147,7 @@ public class Console {
                 case 6: {
                     File deletedIdsFile = new File(FileHelper.failedIdsFolder,
                             "deleted ids.txt");
+                    FileHelper.assureFileExists(deletedIdsFile);
                     ArrayList<Long> ids = FileHelper
                             .readIDsfromFile(deletedIdsFile);
 
@@ -176,11 +185,22 @@ public class Console {
                     break;
                 }
                 case 7: {
-                    MediaCaching.redirectAllTweetsMediaToLocal();
+                    MediaSaving.redirectAllTweetsMediaToLocal();
                     break;
                 }
                 case 8: {
                     login();
+                    break;
+                }
+                case 9: {
+                    ArrayList<JSONObject> allTweets = FileHelper
+                            .loadAllTweets();
+                    Collections.sort(allTweets, TweetsHelper.tweetsComparator);
+
+                    if (allTweets.size() > 0)
+                        TweetsHelper.printTweet(allTweets.get(0));
+                    else
+                        System.out.println("No saved tweets.");
                     break;
                 }
             }

@@ -58,59 +58,51 @@ public class UserData {
         File newArchiveFolder = FileHelper.archiveDir;
         newArchiveFolder.mkdirs();
 
+        System.out.println("IMPORTANT: Your favorites archive will be saved at "
+                + newArchiveFolder.getAbsolutePath());
+
         FileHelper.avatarsFolder.mkdirs();
         FileHelper.mediaFolder.mkdirs();
         FileHelper.recycledMediaFolder.mkdirs();
 
-        copyFile(emptyArchiveFolder, newArchiveFolder,
+        FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder,
                 "css/application.min.css");
-        copyFile(emptyArchiveFolder, newArchiveFolder, "img/bg.png");
-        copyFile(emptyArchiveFolder, newArchiveFolder, "img/sprite.png");
-        copyFile(emptyArchiveFolder, newArchiveFolder, "js/application.js");
-        copyFile(emptyArchiveFolder, newArchiveFolder, "js/en.js");
+        FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder, "img/bg.png");
+        FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder,
+                "img/sprite.png");
+        FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder,
+                "js/application.js");
+        FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder, "js/en.js");
 
-        copyFile(emptyArchiveFolder, newArchiveFolder,
+        FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder,
                 "lib/bootstrap/bootstrap-dropdown.js");
-        copyFile(emptyArchiveFolder, newArchiveFolder,
+        FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder,
                 "lib/bootstrap/bootstrap-modal.js");
-        copyFile(emptyArchiveFolder, newArchiveFolder,
+        FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder,
                 "lib/bootstrap/bootstrap-tooltip.js");
-        copyFile(emptyArchiveFolder, newArchiveFolder,
+        FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder,
                 "lib/bootstrap/bootstrap-transition.js");
-        copyFile(emptyArchiveFolder, newArchiveFolder,
+        FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder,
                 "lib/bootstrap/bootstrap.min.css");
-        copyFile(emptyArchiveFolder, newArchiveFolder,
+        FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder,
                 "lib/bootstrap/glyphicons-halflings-white.png");
-        copyFile(emptyArchiveFolder, newArchiveFolder,
+        FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder,
                 "lib/bootstrap/glyphicons-halflings.png");
-        copyFile(emptyArchiveFolder, newArchiveFolder,
+        FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder,
                 "lib/hogan/hogan-2.0.0.min.js");
-        copyFile(emptyArchiveFolder, newArchiveFolder,
+        FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder,
                 "lib/jquery/jquery-1.8.3.min.js");
-        copyFile(emptyArchiveFolder, newArchiveFolder, "lib/twt/sprite.png");
-        copyFile(emptyArchiveFolder, newArchiveFolder,
+        FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder,
+                "lib/twt/sprite.png");
+        FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder,
                 "lib/twt/sprite.rtl.png");
-        copyFile(emptyArchiveFolder, newArchiveFolder,
+        FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder,
                 "lib/twt/twt.all.min.js");
-        copyFile(emptyArchiveFolder, newArchiveFolder, "lib/twt/twt.min.css");
-        copyFile(emptyArchiveFolder, newArchiveFolder,
+        FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder,
+                "lib/twt/twt.min.css");
+        FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder,
                 "lib/underscore/underscore-min.js");
-        copyFile(emptyArchiveFolder, newArchiveFolder, "index.html");
-    }
-
-    static void assureFileExists(File file) throws IOException {
-        if (!file.exists()) {
-            file.getParentFile().mkdirs();
-            file.createNewFile();
-        }
-    }
-
-    private static void copyFile(File emptyArchiveFolder, File newArchiveFolder,
-            String absoluteFilename) throws IOException {
-        File file1 = new File(emptyArchiveFolder, absoluteFilename);
-        File file2 = new File(newArchiveFolder, absoluteFilename);
-        assureFileExists(file2);
-        FileHelper.copyFile(file1, file2);
+        FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder, "index.html");
     }
 
     private static void makeJsData(User user) throws IOException,

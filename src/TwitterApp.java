@@ -36,7 +36,17 @@ public class TwitterApp {
     }
 
     private static JSONArray loadLoggedInUsers() {
-        JSONArray jsonArray = JSONHelper.getJSONArray(USERS_LOGIN_DATA_FILE);
+        JSONArray jsonArray;
+
+        if (!USERS_LOGIN_DATA_FILE.exists())
+            try {
+                FileHelper.assureFileExists(USERS_LOGIN_DATA_FILE);
+                JSONHelper.saveJSONArray(USERS_LOGIN_DATA_FILE,
+                        new JSONArray());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        jsonArray = JSONHelper.getJSONArray(USERS_LOGIN_DATA_FILE);
         if (jsonArray == null)
             jsonArray = new JSONArray();
         return jsonArray;
@@ -121,12 +131,9 @@ public class TwitterApp {
 
     public TwitterApp(JSONObject userLoginData)
             throws JSONException, TwitterException {
-        // TODO
         ConfigurationBuilder builder = new ConfigurationBuilder()
                 .setJSONStoreEnabled(true);
         twitter = new TwitterFactory(builder.build()).getInstance();
-
-        // twitter = new TwitterFactory().getInstance();
 
         // Set API Keys
         twitter.setOAuthConsumer(API_Keys.OAUTH_CONSUMERKEY,
@@ -152,13 +159,13 @@ public class TwitterApp {
 
         // Open in browser
         if (Desktop.isDesktopSupported())
-            try {
-                Desktop.getDesktop()
-                        .browse(new URI(requestToken.getAuthenticationURL()));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
+            if (Console.askBoolean("Open authorization link in browser?"))
+                try {
+                    Desktop.getDesktop().browse(
+                            new URI(requestToken.getAuthenticationURL()));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
         AccessToken accessToken = twitter
                 .getOAuthAccessToken(prompt("Please enter the PIN"));
         return accessToken;

@@ -153,8 +153,11 @@ public class TweetsHelper {
 
         newTweets = sortTweets(newTweets, tweetsComparator);
 
-        FileHelper.writeDataIntoFile(tweetsFile,
-                header + unicodeEscape(newTweets.toString()));
+        if (newTweets.length() > 0)
+            FileHelper.writeDataIntoFile(tweetsFile,
+                    header + unicodeEscape(newTweets.toString()));
+        else if (tweetsFile.exists())
+            tweetsFile.delete();
 
         // Add to tweet_index.js
         FileHelper.updateEntryInIndexFile(newTweets, month, year);
@@ -204,11 +207,11 @@ public class TweetsHelper {
         String year_month = year + "_" + (month < 10 ? "0" + month : month);
 
         // Save media locally
-        MediaCaching.saveProfileImage(tweet, false);
-        tweet = MediaCaching.redirectToLocalProfileImage(tweet);
+        MediaSaving.saveProfileImage(tweet, false);
+        tweet = MediaSaving.redirectToLocalProfileImage(tweet);
 
-        MediaCaching.saveMediaImage(tweet, false);
-        tweet = MediaCaching.redirectToLocalImage(tweet);
+        MediaSaving.saveMediaImage(tweet, false);
+        tweet = MediaSaving.redirectToLocalImage(tweet);
 
         // Load tweets in the file
         File tweetsFile = FileHelper.getTweetsFile(month, year);

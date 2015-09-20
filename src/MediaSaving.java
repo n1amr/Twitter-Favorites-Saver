@@ -15,7 +15,7 @@ import twitter4j.JSONObject;
 import twitter4j.Status;
 import twitter4j.TwitterException;
 
-public class MediaCaching {
+public class MediaSaving {
 
     public static void downloadFile(String address, File file)
             throws Exception {
@@ -70,7 +70,7 @@ public class MediaCaching {
         try {
             if (url.startsWith("http")) {
                 System.out
-                        .println("Caching profile image of @"
+                        .println("Saving profile image of @"
                                 + tweet.getJSONObject("user").getString("name")
                                 + " (id=" + tweet.getJSONObject("user")
                                         .getString("id_str")
@@ -121,7 +121,7 @@ public class MediaCaching {
                 file.delete();
 
             try {
-                System.out.println("Caching image: " + file.getName());
+                System.out.println("Saving image: " + file.getName());
                 downloadFile(url, file);
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
