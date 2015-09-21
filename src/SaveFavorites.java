@@ -164,8 +164,9 @@ public class SaveFavorites {
     }
 
     static void updateOnline() throws JSONException, IOException {
-        ArrayList<JSONObject> list = FileHelper.loadAllTweets();
-        JSONArray allTweets = JSONHelper.jsonObjectsToJSONArray(list);
+        TweetsHelper.updateAllTweetsList();
+        JSONArray allTweets = JSONHelper
+                .jsonObjectsToJSONArray(TweetsHelper.allTweets);
 
         FavoritesResources favs = Console.twitter.favorites();
         int page = 1;
@@ -233,8 +234,8 @@ public class SaveFavorites {
             scanner.close();
         }
 
-        ArrayList<JSONObject> tweets = FileHelper.loadAllTweets();
-        for (JSONObject tweet : tweets) {
+        TweetsHelper.updateAllTweetsList();
+        for (JSONObject tweet : TweetsHelper.allTweets) {
             String id_str = tweet.getString("id_str");
             long id = Long.valueOf(id_str);
             checkId(id);

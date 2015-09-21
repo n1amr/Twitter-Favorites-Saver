@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.ArrayList;
 import java.util.Collections;
 
 import twitter4j.JSONArray;
@@ -205,11 +204,10 @@ public class MediaSaving {
     }
 
     public static void redirectAllTweetsMediaToLocal() throws Exception {
-        ArrayList<JSONObject> tweets = FileHelper.loadAllTweets();
-        Collections.sort(tweets, TweetsHelper.tweetsComparator);
-        // Collections.reverse(tweets); //TODO
+        TweetsHelper.updateAllTweetsList();
+        Collections.sort(TweetsHelper.allTweets, TweetsHelper.tweetsComparator);
 
-        for (JSONObject tweet : tweets) {
+        for (JSONObject tweet : TweetsHelper.allTweets) {
             saveProfileImage(tweet, false);
             saveMediaImage(tweet, false);
 

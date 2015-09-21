@@ -193,12 +193,12 @@ public class Console {
                     break;
                 }
                 case 9: {
-                    ArrayList<JSONObject> allTweets = FileHelper
-                            .loadAllTweets();
-                    Collections.sort(allTweets, TweetsHelper.tweetsComparator);
+                    TweetsHelper.updateAllTweetsList();
+                    Collections.sort(TweetsHelper.allTweets,
+                            TweetsHelper.tweetsComparator);
 
-                    if (allTweets.size() > 0)
-                        TweetsHelper.printTweet(allTweets.get(0));
+                    if (TweetsHelper.allTweets.size() > 0)
+                        TweetsHelper.printTweet(TweetsHelper.allTweets.get(0));
                     else
                         System.out.println("No saved tweets.");
                     break;

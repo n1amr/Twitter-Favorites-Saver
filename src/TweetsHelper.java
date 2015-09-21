@@ -280,7 +280,7 @@ public class TweetsHelper {
 
     static void updateAllTweetsList() throws JSONException, IOException {
         allTweets = FileHelper.loadAllTweets();
-        Collections.sort(allTweets, TweetsHelper.tweetsComparator);
+        Collections.sort(allTweets, tweetsComparator);
         isAllTweetsListUpdated = true;
     }
 
@@ -308,8 +308,8 @@ public class TweetsHelper {
                     media.getString("media_url")
                             .substring(Math.max(url.lastIndexOf("/"),
                                     url.lastIndexOf("\\")) + 1));
-            System.out.println("Deleting: " + file.getAbsolutePath());
             if (file.exists()) {
+                System.out.println("Deleting " + file.getAbsolutePath());
                 FileHelper.copyFile(file, new File(
                         FileHelper.recycledMediaFolder, file.getName()));
                 file.delete();
@@ -344,7 +344,7 @@ public class TweetsHelper {
                     return;
             }
 
-            System.out.println("Deleting: " + file.getAbsolutePath());
+            System.out.println("Recycling " + file.getAbsolutePath());
             FileHelper.copyFile(file,
                     new File(FileHelper.recycledMediaFolder, file.getName()));
             file.delete();
