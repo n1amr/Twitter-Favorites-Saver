@@ -76,6 +76,12 @@ public class FileHelper {
                 String num = line.substring(p, p2);
                 Long id = Long.valueOf(num);
                 ids.add(id);
+            } else if (line.contains("data-twt-id")) {
+                int p = line.indexOf("data-twt-id") + 13;
+                int p2 = line.indexOf("\"", p);
+                String num = line.substring(p, p2);
+                Long id = Long.valueOf(num);
+                ids.add(id);
             }
         }
         scanner.close();
@@ -345,7 +351,7 @@ public class FileHelper {
         saveProgress(0, loadProgress().getInt("page"),
                 loadProgress().getLong("id"), loadProgress().getInt("month"),
                 loadProgress().getInt("year"));
-        File idsFile = new File("ids/ids.txt");
+        File idsFile = new File("data/ids/ids.txt");
         assureFileExists(idsFile);
         writeIDsintoFile(allids, idsFile);
     }
