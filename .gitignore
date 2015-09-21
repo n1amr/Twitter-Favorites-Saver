@@ -42,8 +42,8 @@ Network Trash Folder
 Temporary Items
 .apdisk
 *.class
-data/users.json
 src/API_Keys.java
 *.rar
 Twitter Favorites Archive for*
 test.json
+data/*

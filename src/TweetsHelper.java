@@ -159,14 +159,16 @@ public class TweetsHelper {
         else if (tweetsFile.exists())
             tweetsFile.delete();
 
+        isAllTweetsListUpdated = false;
+
         // Add to tweet_index.js
         FileHelper.updateEntryInIndexFile(newTweets, month, year);
     }
 
     public static JSONObject fastLoadSavedTweet(long tweetID)
             throws JSONException, IOException {
-        if (allTweets == null)
-            allTweets = FileHelper.loadAllTweets();
+        if (!isAllTweetsListUpdated)
+            updateAllTweetsList();
 
         String id = Long.toString(tweetID);
 
@@ -176,6 +178,7 @@ public class TweetsHelper {
             if (id.equals(id2))
                 return tweet;
         }
+
         return null;
     }
 
@@ -206,6 +209,9 @@ public class TweetsHelper {
         int year = getYear(createdAt);
         String year_month = year + "_" + (month < 10 ? "0" + month : month);
 
+        // Escape new lines in text
+        tweet = fixNewLines(tweet);
+
         // Save media locally
         MediaSaving.saveProfileImage(tweet, false);
         tweet = MediaSaving.redirectToLocalProfileImage(tweet);
@@ -233,15 +239,15 @@ public class TweetsHelper {
                 newTweets.put(tweet2);
         }
 
-        if (oldTweet == null)
-            newTweets.put(tweet);
-        else if (override)
+        if (oldTweet == null || override)
             newTweets.put(tweet);
         else {
             newTweets.put(oldTweet);
             System.out.println(
                     "Skipped; This tweet has already been saved #" + id);
         }
+
+        isAllTweetsListUpdated = false;
 
         newTweets = sortTweets(newTweets, tweetsComparator);
 
@@ -269,6 +275,14 @@ public class TweetsHelper {
     static SimpleDateFormat myDateFormat = new SimpleDateFormat(
             "MMM dd, yyyy - hh:mm");
     static ArrayList<JSONObject> allTweets = null;
+
+    static boolean isAllTweetsListUpdated = false;
+
+    static void updateAllTweetsList() throws JSONException, IOException {
+        allTweets = FileHelper.loadAllTweets();
+        Collections.sort(allTweets, TweetsHelper.tweetsComparator);
+        isAllTweetsListUpdated = true;
+    }
 
     static void deleteTweetMedia(long id) throws JSONException, IOException {
         JSONObject tweet = FileHelper.loadSavedTweet(id);
@@ -314,8 +328,23 @@ public class TweetsHelper {
         File file = new File(FileHelper.avatarsFolder, url.substring(
                 Math.max(url.lastIndexOf("/"), url.lastIndexOf("\\")) + 1));
 
-        System.out.println("Deleting: " + file.getAbsolutePath());
         if (file.exists()) {
+            // Cancel deletion if another tweet is using the same file
+            if (!isAllTweetsListUpdated)
+                updateAllTweetsList();
+
+            for (JSONObject tweet2 : allTweets) {
+                String url2 = tweet2.getJSONObject("user")
+                        .getString("profile_image_url_https");
+                String filename2 = url2.substring(
+                        Math.max(url2.lastIndexOf("/"), url2.lastIndexOf("\\"))
+                                + 1);
+                if (filename2.equals(file.getName()) && !tweet
+                        .getString("id_str").equals(tweet2.getString("id_str")))
+                    return;
+            }
+
+            System.out.println("Deleting: " + file.getAbsolutePath());
             FileHelper.copyFile(file,
                     new File(FileHelper.recycledMediaFolder, file.getName()));
             file.delete();
@@ -339,7 +368,71 @@ public class TweetsHelper {
         System.out.print(" || #" + tweet.getString("id_str"));
         System.out.println();
         System.out.println("------------------------------------------");
-        System.out.println(tweet.getString("text"));
+        System.out.println(tweet.getString("text").replace("<br>", "\r\n"));
         System.out.println("******************************************");
+    }
+
+    static JSONArray fixEntity(JSONArray entity,
+            ArrayList<Integer> replacesIndices) throws JSONException {
+        JSONArray new_entity = new JSONArray();
+        for (int i = 0; i < entity.length(); i++) {
+            JSONObject entity_unit = entity.getJSONObject(i);
+            JSONArray indices = entity_unit.getJSONArray("indices");
+
+            int p1 = indices.getInt(0);
+            int p2 = indices.getInt(1);
+
+            for (int p : replacesIndices)
+                if (p < p1) {
+                    p1 += 3;
+                    p2 += 3;
+                }
+            indices = new JSONArray();
+            indices.put(p1);
+            indices.put(p2);
+
+            entity_unit.put("indices", indices);
+            new_entity.put(entity_unit);
+        }
+        return new_entity;
+    }
+
+    static JSONObject fixNewLines(JSONObject tweet) throws Exception {
+        JSONObject new_tweet = new JSONObject(tweet.toString());
+
+        String text = tweet.getString("text");
+        JSONObject entities = tweet.getJSONObject("entities");
+
+        if (text.contains("\n")) {
+            // Replace every \n with a <br> and save the index to list to fix
+            // entities later
+            int p = 0;
+            ArrayList<Integer> replacesIndices = new ArrayList<>();
+            while (true) {
+                p = text.indexOf("\n");
+                if (p < text.length() && p > 0) {
+                    replacesIndices.add(p);
+                    text = text.replaceFirst("\n", "<br>");
+                } else
+                    break;
+            }
+
+            // fix entities
+            entities.put("hashtags", fixEntity(
+                    entities.getJSONArray("hashtags"), replacesIndices));
+            entities.put("symbols", fixEntity(entities.getJSONArray("symbols"),
+                    replacesIndices));
+            entities.put("urls",
+                    fixEntity(entities.getJSONArray("urls"), replacesIndices));
+            entities.put("user_mentions", fixEntity(
+                    entities.getJSONArray("user_mentions"), replacesIndices));
+
+            // Apply changes
+            new_tweet.put("entities", entities);
+            new_tweet.put("text", text);
+
+            return new_tweet;
+        }
+        return tweet;
     }
 }

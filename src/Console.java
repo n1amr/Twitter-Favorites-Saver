@@ -73,8 +73,8 @@ public class Console {
     public static void main(String[] args) throws Exception {
         initialize();
 
-        int response;
-        do {
+        int response = -1;
+        while (response != 0) {
             System.out.println("*********************************************");
             System.out.println("1- Save favorites online from twitter");
             System.out.println(
@@ -206,7 +206,7 @@ public class Console {
             }
             System.out.println("Press ENTER to continue...");
             scanner.nextLine();
-        } while (response != 0);
+        }
         System.out.println("End");
     }
 }
