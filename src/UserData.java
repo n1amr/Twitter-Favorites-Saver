@@ -61,6 +61,9 @@ public class UserData {
     FileHelper.mediaFolder.mkdirs();
     FileHelper.recycledMediaFolder.mkdirs();
 
+    new File(FileHelper.mediaFolder.getAbsolutePath() + "/videos/thumbnails/")
+        .mkdirs();
+
     FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder,
         "css/application.min.css");
     FileHelper.copyFile(emptyArchiveFolder, newArchiveFolder, "img/bg.png");
