@@ -52,14 +52,12 @@ public class Console {
     static void rateLimitWait(TwitterException e) {
         System.err.println("Rate limit exceeded");
         int seconds = e.getRateLimitStatus().getSecondsUntilReset();
+        int millis = 1000 * seconds + 3000;
+        Date date = new Date(new Date().getTime() + millis);
+
         System.out.println("Waiting for " + seconds + " seconds.");
-        Date date = new Date(new Date().getTime() + seconds * 1000 + 3000);
-        System.out.println("Retry on " + date.toString());
-        try {
-            Thread.sleep(1000 * seconds + 3000);
-        } catch (Exception e2) {
-            e2.printStackTrace();
-        }
+        System.out.println("Please wait until " + date.toString());
+        pause(millis);
     }
 
     static boolean askBoolean(String q) {
@@ -86,6 +84,10 @@ public class Console {
             System.out.println("7- Save offline images");
             System.out.println("8- Change account");
             System.out.println("9- Show the most recent saved tweet");
+            System.out.println(
+                    "10- Switch to <br> new line (better multiline looking, search problems)");
+            System.out.println(
+                    "11- Switch to \\n new line (single line, search works)");
             System.out.println("0- Exit");
 
             response = scanner.nextInt();
@@ -201,6 +203,34 @@ public class Console {
                         TweetsHelper.printTweet(TweetsHelper.allTweets.get(0));
                     else
                         System.out.println("No saved tweets.");
+                    break;
+                }
+                case 10: {
+                    System.out.println("Please wait...");
+                    TweetsHelper.updateAllTweetsList();
+                    for (JSONObject tweet : TweetsHelper.allTweets) {
+                        JSONObject new_tweet = TweetsHelper.fixNewLines(tweet);
+                        if (tweet != new_tweet) {
+                            // TweetsHelper.printTweet(new_tweet);
+                            TweetsHelper.deleteTweet(tweet);
+                            TweetsHelper.saveTweet(new_tweet);
+                        }
+                    }
+
+                    break;
+                }
+                case 11: {
+                    System.out.println("Please wait...");
+                    TweetsHelper.updateAllTweetsList();
+                    for (JSONObject tweet : TweetsHelper.allTweets) {
+                        JSONObject new_tweet = TweetsHelper
+                                .undoFixNewLines(tweet);
+                        if (tweet != new_tweet) {
+                            // TweetsHelper.printTweet(new_tweet);
+                            TweetsHelper.deleteTweet(tweet);
+                            TweetsHelper.saveTweet(new_tweet);
+                        }
+                    }
                     break;
                 }
             }

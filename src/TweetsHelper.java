@@ -210,7 +210,7 @@ public class TweetsHelper {
         String year_month = year + "_" + (month < 10 ? "0" + month : month);
 
         // Escape new lines in text
-        tweet = fixNewLines(tweet);
+        // tweet = fixNewLines(tweet); //TODO
 
         // Save media locally
         MediaSaving.saveProfileImage(tweet, false);
@@ -425,6 +425,70 @@ public class TweetsHelper {
             entities.put("urls",
                     fixEntity(entities.getJSONArray("urls"), replacesIndices));
             entities.put("user_mentions", fixEntity(
+                    entities.getJSONArray("user_mentions"), replacesIndices));
+
+            // Apply changes
+            new_tweet.put("entities", entities);
+            new_tweet.put("text", text);
+
+            return new_tweet;
+        }
+        return tweet;
+    }
+
+    static JSONArray undoFixEntity(JSONArray entity,
+            ArrayList<Integer> replacesIndices) throws JSONException {
+        JSONArray new_entity = new JSONArray();
+        for (int i = 0; i < entity.length(); i++) {
+            JSONObject entity_unit = entity.getJSONObject(i);
+            JSONArray indices = entity_unit.getJSONArray("indices");
+
+            int p1 = indices.getInt(0);
+            int p2 = indices.getInt(1);
+
+            for (int j = replacesIndices.size() - 1; j >= 0; j--)
+                if (replacesIndices.get(j) < p1) {
+                    p1 -= 3;
+                    p2 -= 3;
+                }
+            indices = new JSONArray();
+            indices.put(p1);
+            indices.put(p2);
+
+            entity_unit.put("indices", indices);
+            new_entity.put(entity_unit);
+        }
+        return new_entity;
+    }
+
+    static JSONObject undoFixNewLines(JSONObject tweet) throws Exception {
+        JSONObject new_tweet = new JSONObject(tweet.toString());
+
+        String text = tweet.getString("text");
+        JSONObject entities = tweet.getJSONObject("entities");
+
+        if (text.contains("<br>")) {
+            // Replace every <br> with a \n and save the index to list to fix
+            // entities later
+            int p = 0;
+            ArrayList<Integer> replacesIndices = new ArrayList<>();
+            while (true) {
+                p = text.indexOf("<br>");
+                if (p < text.length() && p > 0) {
+                    replacesIndices.add(p);
+                    text = text.replaceFirst("<br>", "\n");
+                } else
+                    break;
+            }
+
+            // fix entities
+            entities.put("hashtags", undoFixEntity(
+                    entities.getJSONArray("hashtags"), replacesIndices));
+            entities.put("symbols", undoFixEntity(
+                    entities.getJSONArray("symbols"), replacesIndices));
+            entities.put("urls", undoFixEntity(entities.getJSONArray("urls"),
+                    replacesIndices));
+            entities.put("user_mentions", undoFixEntity(
                     entities.getJSONArray("user_mentions"), replacesIndices));
 
             // Apply changes

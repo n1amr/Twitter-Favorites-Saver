@@ -46,7 +46,7 @@ public class SaveFavorites {
                     if (!isChecked(id)) {
                         jsonTweet = TweetsHelper.getTweet(id);
                         TweetsHelper.printTweet(jsonTweet);
-
+                        Console.scanner.nextLine();
                         TweetsHelper.saveTweet(jsonTweet);
 
                         String createdAt = jsonTweet.getString("created_at");
