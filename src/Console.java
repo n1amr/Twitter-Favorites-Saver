@@ -13,230 +13,226 @@ import twitter4j.TwitterException;
 import twitter4j.User;
 
 public class Console {
-    static Scanner scanner;
+  static Scanner scanner;
 
-    static Twitter twitter;
-    static TwitterApp twitterApp;
+  static Twitter twitter;
+  static TwitterApp twitterApp;
 
-    static void initialize() throws Exception {
-        System.out.println("Start");
-        scanner = new Scanner(System.in);
-        TwitterApp.setScanner(scanner);
+  static void initialize() throws Exception {
+    System.out.println("Start");
+    scanner = new Scanner(System.in);
+    TwitterApp.setScanner(scanner);
 
-        FileHelper.assureFolderExists(FileHelper.htmlFolder);
-        FileHelper.assureFolderExists(FileHelper.failedIdsFolder);
+    FileHelper.assureFolderExists(FileHelper.htmlFolder);
+    FileHelper.assureFolderExists(FileHelper.failedIdsFolder);
 
-        login();
+    login();
+  }
+
+  static void login() throws JSONException, TwitterException,
+      IllegalStateException, IOException {
+    System.out.println("Choose account:");
+    twitterApp = TwitterApp.signIn();
+    twitter = twitterApp.getTwitter();
+
+    User currentUser = twitter.showUser(twitter.getId());
+    UserData.load(currentUser);
+
+    System.out.println("Logged in as: " + currentUser.getScreenName());
+  }
+
+  static void pause(long millis) {
+    try {
+      Thread.sleep(millis);
+    } catch (Exception e2) {
+      e2.printStackTrace();
     }
+  }
 
-    static void login() throws JSONException, TwitterException,
-            IllegalStateException, IOException {
-        System.out.println("Choose account:");
-        twitterApp = TwitterApp.signIn();
-        twitter = twitterApp.getTwitter();
+  static void rateLimitWait(TwitterException e) {
+    System.err.println("Rate limit exceeded");
+    int seconds = e.getRateLimitStatus().getSecondsUntilReset();
+    int millis = 1000 * seconds + 3000;
+    Date date = new Date(new Date().getTime() + millis);
 
-        User currentUser = twitter.showUser(twitter.getId());
-        UserData.load(currentUser);
+    System.out.println("Waiting for " + seconds + " seconds.");
+    System.out.println("Please wait until " + date.toString());
+    pause(millis);
+  }
 
-        System.out.println("Logged in as: " + currentUser.getScreenName());
-    }
+  static boolean askBoolean(String q) {
+    System.out.println(q + " (Y/N)");
+    String res = scanner.nextLine().toUpperCase();
+    if (res.contains("Y"))
+      return true;
+    return false;
+  }
 
-    static void pause(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (Exception e2) {
-            e2.printStackTrace();
+  public static void main(String[] args) throws Exception {
+    initialize();
+
+    int response = -1;
+    while (response != 0) {
+      System.out.println("*********************************************");
+      System.out.println("1- Save favorites online from twitter");
+      System.out.println(
+          "2- Save favorites offline from html files in \"savedHTML\" folder");
+      System.out.println("3- Check if a tweet is saved");
+      System.out.println("4- Add a tweet by ID");
+      System.out.println("5- Remove a saved tweet");
+      System.out.println("6- Retry failed");
+      System.out.println("7- Save offline images");
+      System.out.println("8- Change account");
+      System.out.println("9- Show the most recent saved tweet");
+      System.out.println(
+          "10- Switch to <br> new line (better multiline looking, search problems)");
+      System.out
+          .println("11- Switch to \\n new line (single line, search works)");
+      System.out.println("0- Exit");
+
+      response = scanner.nextInt();
+      scanner.nextLine();
+
+      switch (response) {
+        case 1: {
+          if (askBoolean("Is this the first time?")) {
+            if (askBoolean("Start over?"))
+              SaveFavorites.resetProgress();
+
+            SaveFavorites.saveFavoritesOnline();
+          } else
+            SaveFavorites.updateOnline();
+          break;
         }
-    }
+        case 2: {
+          if (askBoolean("Refresh files?"))
+            FileHelper.collectIdsFromHTMLFolder(FileHelper.htmlFolder);
+          SaveFavorites.saveFavoritesFromSavedHTML();
+          break;
+        }
+        case 3: {
+          System.out.print("Enter id:");
+          long id = scanner.nextLong();
+          scanner.nextLine();
+          JSONObject tweet = FileHelper.loadSavedTweet(id);
+          if (tweet != null)
+            TweetsHelper.printTweet(tweet);
+          else
+            System.out.println("This tweet is not saved");
+          break;
+        }
+        case 4: {
+          System.out.print("Enter id:");
+          long id = scanner.nextLong();
+          scanner.nextLine();
+          System.out.println("Loading tweet...");
+          TweetsHelper.printTweet(TweetsHelper.getTweet(id));
+          TweetsHelper.saveTweet(id);
+          break;
+        }
+        case 5: {
+          System.out.print("Enter id:");
+          long id = scanner.nextLong();
+          scanner.nextLine();
 
-    static void rateLimitWait(TwitterException e) {
-        System.err.println("Rate limit exceeded");
-        int seconds = e.getRateLimitStatus().getSecondsUntilReset();
-        int millis = 1000 * seconds + 3000;
-        Date date = new Date(new Date().getTime() + millis);
+          JSONObject tweet = TweetsHelper.fastLoadSavedTweet(id);
 
-        System.out.println("Waiting for " + seconds + " seconds.");
-        System.out.println("Please wait until " + date.toString());
-        pause(millis);
-    }
+          System.out.println("Deleteing ...");
+          TweetsHelper.printTweet(tweet);
 
-    static boolean askBoolean(String q) {
-        System.out.println(q + " (Y/N)");
-        String res = scanner.nextLine().toUpperCase();
-        if (res.contains("Y"))
-            return true;
-        return false;
-    }
+          TweetsHelper.deleteTweetProfileImage(tweet);
+          TweetsHelper.deleteTweetImage(tweet);
+          TweetsHelper.deleteTweet(tweet);
+          break;
+        }
+        case 6: {
+          File deletedIdsFile = new File(FileHelper.failedIdsFolder,
+              "deleted ids.txt");
+          FileHelper.assureFileExists(deletedIdsFile);
+          ArrayList<Long> ids = FileHelper.readIDsfromFile(deletedIdsFile);
 
-    public static void main(String[] args) throws Exception {
-        initialize();
+          TreeSet<Long> uids = new TreeSet<>(ids);
+          ids = new ArrayList<>(uids);
+          Collections.reverse(ids);
 
-        int response = -1;
-        while (response != 0) {
-            System.out.println("*********************************************");
-            System.out.println("1- Save favorites online from twitter");
-            System.out.println(
-                    "2- Save favorites offline from html files in \"savedHTML\" folder");
-            System.out.println("3- Check if a tweet is saved");
-            System.out.println("4- Add a tweet by ID");
-            System.out.println("5- Remove a saved tweet");
-            System.out.println("6- Retry failed");
-            System.out.println("7- Save offline images");
-            System.out.println("8- Change account");
-            System.out.println("9- Show the most recent saved tweet");
-            System.out.println(
-                    "10- Switch to <br> new line (better multiline looking, search problems)");
-            System.out.println(
-                    "11- Switch to \\n new line (single line, search works)");
-            System.out.println("0- Exit");
+          ArrayList<Long> toRemoveFromFile = new ArrayList<>();
 
-            response = scanner.nextInt();
-            scanner.nextLine();
+          for (int i = 0; i < ids.size(); i++) {
+            Long id = ids.get(i);
+            System.out.println(i + ": id=" + id);
+            try {
+              TweetsHelper.saveTweet(id);
 
-            switch (response) {
-                case 1: {
-                    if (askBoolean("Is this the first time?")) {
-                        if (askBoolean("Start over?"))
-                            SaveFavorites.resetProgress();
+              JSONObject tweet = FileHelper.loadSavedTweet(id);
+              System.out.println("Successfully saved " + id);
+              TweetsHelper.printTweet(tweet);
 
-                        SaveFavorites.saveFavoritesOnline();
-                    } else
-                        SaveFavorites.updateOnline();
-                    break;
-                }
-                case 2: {
-                    if (askBoolean("Refresh files?"))
-                        FileHelper.collectIdsFromHTMLFolder(
-                                FileHelper.htmlFolder);
-                    SaveFavorites.saveFavoritesFromSavedHTML();
-                    break;
-                }
-                case 3: {
-                    System.out.print("Enter id:");
-                    long id = scanner.nextLong();
-                    scanner.nextLine();
-                    JSONObject tweet = FileHelper.loadSavedTweet(id);
-                    if (tweet != null)
-                        TweetsHelper.printTweet(tweet);
-                    else
-                        System.out.println("This tweet is not saved");
-                    break;
-                }
-                case 4: {
-                    System.out.print("Enter id:");
-                    long id = scanner.nextLong();
-                    scanner.nextLine();
-                    System.out.println("Loading tweet...");
-                    TweetsHelper.printTweet(TweetsHelper.getTweet(id));
-                    TweetsHelper.saveTweet(id);
-                    break;
-                }
-                case 5: {
-                    System.out.print("Enter id:");
-                    long id = scanner.nextLong();
-                    scanner.nextLine();
-
-                    JSONObject tweet = TweetsHelper.fastLoadSavedTweet(id);
-
-                    System.out.println("Deleteing ...");
-                    TweetsHelper.printTweet(tweet);
-
-                    TweetsHelper.deleteTweetProfileImage(tweet);
-                    TweetsHelper.deleteTweetImage(tweet);
-                    TweetsHelper.deleteTweet(tweet);
-                    break;
-                }
-                case 6: {
-                    File deletedIdsFile = new File(FileHelper.failedIdsFolder,
-                            "deleted ids.txt");
-                    FileHelper.assureFileExists(deletedIdsFile);
-                    ArrayList<Long> ids = FileHelper
-                            .readIDsfromFile(deletedIdsFile);
-
-                    TreeSet<Long> uids = new TreeSet<>(ids);
-                    ids = new ArrayList<>(uids);
-                    Collections.reverse(ids);
-
-                    ArrayList<Long> toRemoveFromFile = new ArrayList<>();
-
-                    for (int i = 0; i < ids.size(); i++) {
-                        Long id = ids.get(i);
-                        System.out.println(i + ": id=" + id);
-                        try {
-                            TweetsHelper.saveTweet(id);
-
-                            JSONObject tweet = FileHelper.loadSavedTweet(id);
-                            System.out.println("Successfully saved " + id);
-                            TweetsHelper.printTweet(tweet);
-
-                            toRemoveFromFile.add(id);
-                        } catch (TwitterException e) {
-                            if (e.getErrorCode() == 179
-                                    || e.getErrorCode() == 63) {
-                                SaveFavorites.markDeleted(id);
-                                toRemoveFromFile.add(id);
-                            } else if (e.getErrorCode() == 88)
-                                rateLimitWait(e);
-                            else
-                                e.printStackTrace();
-                        }
-                    }
-
-                    for (Long id : toRemoveFromFile)
-                        ids.remove(id);
-                    break;
-                }
-                case 7: {
-                    MediaSaving.redirectAllTweetsMediaToLocal();
-                    break;
-                }
-                case 8: {
-                    login();
-                    break;
-                }
-                case 9: {
-                    TweetsHelper.updateAllTweetsList();
-                    Collections.sort(TweetsHelper.allTweets,
-                            TweetsHelper.tweetsComparator);
-
-                    if (TweetsHelper.allTweets.size() > 0)
-                        TweetsHelper.printTweet(TweetsHelper.allTweets.get(0));
-                    else
-                        System.out.println("No saved tweets.");
-                    break;
-                }
-                case 10: {
-                    System.out.println("Please wait...");
-                    TweetsHelper.updateAllTweetsList();
-                    for (JSONObject tweet : TweetsHelper.allTweets) {
-                        JSONObject new_tweet = TweetsHelper.fixNewLines(tweet);
-                        if (tweet != new_tweet) {
-                            // TweetsHelper.printTweet(new_tweet);
-                            TweetsHelper.deleteTweet(tweet);
-                            TweetsHelper.saveTweet(new_tweet);
-                        }
-                    }
-
-                    break;
-                }
-                case 11: {
-                    System.out.println("Please wait...");
-                    TweetsHelper.updateAllTweetsList();
-                    for (JSONObject tweet : TweetsHelper.allTweets) {
-                        JSONObject new_tweet = TweetsHelper
-                                .undoFixNewLines(tweet);
-                        if (tweet != new_tweet) {
-                            // TweetsHelper.printTweet(new_tweet);
-                            TweetsHelper.deleteTweet(tweet);
-                            TweetsHelper.saveTweet(new_tweet);
-                        }
-                    }
-                    break;
-                }
+              toRemoveFromFile.add(id);
+            } catch (TwitterException e) {
+              if (e.getErrorCode() == 179 || e.getErrorCode() == 63) {
+                SaveFavorites.markDeleted(id);
+                toRemoveFromFile.add(id);
+              } else if (e.getErrorCode() == 88)
+                rateLimitWait(e);
+              else
+                e.printStackTrace();
             }
-            System.out.println("Press ENTER to continue...");
-            scanner.nextLine();
+          }
+
+          for (Long id : toRemoveFromFile)
+            ids.remove(id);
+          break;
         }
-        System.out.println("End");
+        case 7: {
+          MediaSaving.redirectAllTweetsMediaToLocal();
+          break;
+        }
+        case 8: {
+          login();
+          break;
+        }
+        case 9: {
+          TweetsHelper.updateAllTweetsList();
+          Collections.sort(TweetsHelper.allTweets,
+              TweetsHelper.tweetsComparator);
+
+          if (TweetsHelper.allTweets.size() > 0)
+            TweetsHelper.printTweet(TweetsHelper.allTweets.get(0));
+          else
+            System.out.println("No saved tweets.");
+          break;
+        }
+        case 10: {
+          System.out.println("Please wait...");
+          TweetsHelper.updateAllTweetsList();
+          for (JSONObject tweet : TweetsHelper.allTweets) {
+            JSONObject new_tweet = TweetsHelper.fixNewLines(tweet);
+            if (tweet != new_tweet) {
+              // TweetsHelper.printTweet(new_tweet);
+              TweetsHelper.deleteTweet(tweet);
+              TweetsHelper.saveTweet(new_tweet);
+            }
+          }
+
+          break;
+        }
+        case 11: {
+          System.out.println("Please wait...");
+          TweetsHelper.updateAllTweetsList();
+          for (JSONObject tweet : TweetsHelper.allTweets) {
+            JSONObject new_tweet = TweetsHelper.undoFixNewLines(tweet);
+            if (tweet != new_tweet) {
+              // TweetsHelper.printTweet(new_tweet);
+              TweetsHelper.deleteTweet(tweet);
+              TweetsHelper.saveTweet(new_tweet);
+            }
+          }
+          break;
+        }
+      }
+      System.out.println("Press ENTER to continue...");
+      scanner.nextLine();
     }
+    System.out.println("End");
+  }
 }
