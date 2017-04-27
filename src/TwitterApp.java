@@ -1,17 +1,12 @@
-import java.awt.Desktop;
-import java.io.File;
-import java.net.URI;
-import java.util.Scanner;
-
-import twitter4j.JSONArray;
-import twitter4j.JSONException;
-import twitter4j.JSONObject;
-import twitter4j.Twitter;
-import twitter4j.TwitterException;
-import twitter4j.TwitterFactory;
+import twitter4j.*;
 import twitter4j.auth.AccessToken;
 import twitter4j.auth.RequestToken;
 import twitter4j.conf.ConfigurationBuilder;
+
+import java.awt.*;
+import java.io.File;
+import java.net.URI;
+import java.util.Scanner;
 
 public class TwitterApp {
 
@@ -185,15 +180,20 @@ public class TwitterApp {
       JSONArray users = loadLoggedInUsers();
 
       // Check if it's been saved before
-      boolean exists = false;
+      int oldIndex = -1;
       for (int i = 0; i < users.length(); i++)
         if (users.getJSONObject(i).getLong(JSONHelper.JSON_USER_ID) == twitter
-            .getId())
-          exists = true;
+            .getId()) {
+          oldIndex = i;
+          break;
+        }
 
       // Add only if it's new
-      if (!exists)
+      if (oldIndex == -1)
         users.put(currentUser);
+      else
+        users.put(oldIndex, currentUser);
+
 
       // Save all
       storeLoggedInUsers(users);
