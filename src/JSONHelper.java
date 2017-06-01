@@ -14,6 +14,7 @@ public class JSONHelper {
   public static final String JSON_ACCESS_SECRET = "access.secret";
   public static final String JSON_USER_HANDLE = "twitter.handle";
   public static final String JSON_USER_ID = "twitter.ID";
+  public static final String JSON_USER_DATA_PATH = "data.path";
 
   public static JSONArray getJSONArray(File file) {
     JSONArray jsonArray = null;

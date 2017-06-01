@@ -1,11 +1,7 @@
+import twitter4j.*;
+
 import java.io.File;
 import java.io.IOException;
-
-import twitter4j.JSONArray;
-import twitter4j.JSONException;
-import twitter4j.JSONObject;
-import twitter4j.TwitterException;
-import twitter4j.User;
 
 public class UserData {
   static void load(User user) throws IllegalStateException, IOException,
@@ -20,9 +16,9 @@ public class UserData {
         .loadJSONArray(TwitterApp.USERS_LOGIN_DATA_FILE);
     for (int i = 0; i < users.length(); i++) {
       JSONObject jsonuser = users.getJSONObject(i);
-      if (jsonuser.getInt("twitter.ID") == user.getId()) {
-        if (jsonuser.has("folder_path"))
-          FileHelper.archiveDir = new File(jsonuser.getString("folder_path"));
+      if (jsonuser.getInt(JSONHelper.JSON_USER_ID) == user.getId()) {
+        if (jsonuser.has(JSONHelper.JSON_USER_DATA_PATH))
+          FileHelper.archiveDir = new File(jsonuser.getString(JSONHelper.JSON_USER_DATA_PATH));
         break;
       }
     }

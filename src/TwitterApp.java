@@ -115,6 +115,7 @@ public class TwitterApp {
   }
 
   private Twitter twitter;
+  private String user_data_path;
 
   public TwitterApp() throws TwitterException, JSONException {
     this(null);
@@ -133,9 +134,11 @@ public class TwitterApp {
     AccessToken accessToken = null;
 
     // Get Access token
-    if (userLoginData != null)
+    if (userLoginData != null) {
+      if (userLoginData.has(JSONHelper.JSON_USER_DATA_PATH))
+        user_data_path = userLoginData.getString(JSONHelper.JSON_USER_DATA_PATH);
       accessToken = getAccessToken(userLoginData);
-    else
+    } else
       accessToken = getNewAccessToken();
 
     // Set Access token
@@ -175,6 +178,7 @@ public class TwitterApp {
           twitter.getOAuthAccessToken().getToken());
       currentUser.put(JSONHelper.JSON_ACCESS_SECRET,
           twitter.getOAuthAccessToken().getTokenSecret());
+      currentUser.put(JSONHelper.JSON_USER_DATA_PATH, user_data_path);
 
       // Load all users
       JSONArray users = loadLoggedInUsers();
@@ -193,7 +197,6 @@ public class TwitterApp {
         users.put(currentUser);
       else
         users.put(oldIndex, currentUser);
-
 
       // Save all
       storeLoggedInUsers(users);
