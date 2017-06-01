@@ -144,7 +144,7 @@ public class TwitterApp {
     // Set Access token
     twitter.setOAuthAccessToken(accessToken);
 
-    storeUserLoginData();
+    storeLoggedUserLoginData();
   }
 
   private AccessToken getNewAccessToken() throws TwitterException {
@@ -169,36 +169,40 @@ public class TwitterApp {
     return twitter;
   }
 
-  private void storeUserLoginData() {
+  private JSONObject getCurrentUserData() throws TwitterException, JSONException {
+    JSONObject currentUser = new JSONObject();
+    currentUser.put(JSONHelper.JSON_USER_HANDLE, twitter.getScreenName());
+    currentUser.put(JSONHelper.JSON_USER_ID, twitter.getId());
+    currentUser.put(JSONHelper.JSON_ACCESS_KEY,
+        twitter.getOAuthAccessToken().getToken());
+    currentUser.put(JSONHelper.JSON_ACCESS_SECRET,
+        twitter.getOAuthAccessToken().getTokenSecret());
+    currentUser.put(JSONHelper.JSON_USER_DATA_PATH, user_data_path);
+    return currentUser;
+  }
+
+  private void updateUserData(JSONArray users, JSONObject user) throws JSONException {
+    // Check if it's been saved before
+    int oldIndex = -1;
+    for (int i = 0; i < users.length(); i++)
+      if (users.getJSONObject(i).getLong(JSONHelper.JSON_USER_ID) == user
+          .getLong(JSONHelper.JSON_USER_ID)) {
+        oldIndex = i;
+        break;
+      }
+
+    // Add only if it's new
+    if (oldIndex == -1)
+      users.put(user);
+    else
+      users.put(oldIndex, user);
+  }
+
+  private void storeLoggedUserLoginData() {
     try {
-      JSONObject currentUser = new JSONObject();
-      currentUser.put(JSONHelper.JSON_USER_HANDLE, twitter.getScreenName());
-      currentUser.put(JSONHelper.JSON_USER_ID, twitter.getId());
-      currentUser.put(JSONHelper.JSON_ACCESS_KEY,
-          twitter.getOAuthAccessToken().getToken());
-      currentUser.put(JSONHelper.JSON_ACCESS_SECRET,
-          twitter.getOAuthAccessToken().getTokenSecret());
-      currentUser.put(JSONHelper.JSON_USER_DATA_PATH, user_data_path);
-
-      // Load all users
+      JSONObject currentUser = getCurrentUserData();
       JSONArray users = loadLoggedInUsers();
-
-      // Check if it's been saved before
-      int oldIndex = -1;
-      for (int i = 0; i < users.length(); i++)
-        if (users.getJSONObject(i).getLong(JSONHelper.JSON_USER_ID) == twitter
-            .getId()) {
-          oldIndex = i;
-          break;
-        }
-
-      // Add only if it's new
-      if (oldIndex == -1)
-        users.put(currentUser);
-      else
-        users.put(oldIndex, currentUser);
-
-      // Save all
+      updateUserData(users, currentUser);
       storeLoggedInUsers(users);
     } catch (Exception e) {
       e.printStackTrace();
